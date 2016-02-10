@@ -1,7 +1,7 @@
-# RecuperaBit
+# ![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
 
 A software which attempts to reconstruct file system structures and recover
-files. Currently it supports only NTFS file systems.
+files. Currently it supports only NTFS.
 
 RecuperaBit attempts reconstruction of the directory structure regardless of:
 
