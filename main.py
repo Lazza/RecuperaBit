@@ -261,12 +261,12 @@ def main():
 
     # Ask for confirmation before beginning the process
     try:
-        confirm = raw_input('Type [Enter] to start the analysis or "exit" to '
-                            'quit: ')
+        confirm = raw_input('Type [Enter] to start the analysis or '
+                            '"exit" / "quit" / "q" to quit: ')
     except EOFError:
         print ''
         exit(0)
-    if confirm == 'exit':
+    if confirm in ('exit', 'quit', 'q'):
         exit(0)
 
     scanners = [pl(image) for pl in plugins]

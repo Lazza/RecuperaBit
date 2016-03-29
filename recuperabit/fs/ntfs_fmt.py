@@ -89,7 +89,7 @@ def runlist_unpack(runlist):
         off_bytes, len_bytes = divmod(runlist[0], 2**4)
         end = len_bytes + off_bytes
         decoded = unpack(runlist, [
-            ('length', ('+i', 1, len_bytes)),
+            ('length', ('i', 1, len_bytes)),
             ('offset', ('+i', len_bytes + 1, end))
         ])
         if decoded['length'] is None:

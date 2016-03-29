@@ -38,8 +38,23 @@ ascii_printable = set(string.printable[:-5])
 
 def sectors(image, offset, size, bsize=sector_size):
     """Read from a file descriptor."""
-    image.seek(offset * bsize)
-    return bytearray(image.read(size * bsize))
+    read = True
+    try:
+        image.seek(offset * bsize)
+    except IOError:
+        read = False
+    if read:
+        try:
+            dump = image.read(size * bsize)
+        except IOError, MemoryError:
+            logging.warning(
+                "Cannot read sector(s). Filling with 0x00. Offset: {} Size: "
+                "{} Bsize: {}".format(offset, size, bsize)
+            )
+            read = False
+    if not read:
+        dump = size * bsize * '\x00'
+    return bytearray(dump)
 
 
 def signedbytes(data):

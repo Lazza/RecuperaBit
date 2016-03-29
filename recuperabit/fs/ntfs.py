@@ -136,7 +136,8 @@ def _attributes_reader(entry, offset):
 def parse_file_record(entry):
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
-    if header['size_alloc'] > len(entry):
+    if (header['size_alloc'] > len(entry) or
+            len(entry) < FILE_size*sector_size):
         header['valid'] = False
         return header
 
@@ -206,16 +207,18 @@ def _integrate_attribute_list(parsed, part, image):
     attrs = parsed['attributes']
     attr = attrs['$ATTRIBUTE_LIST']
 
+    spc = part.sec_per_clus
     if 'runlist' in attr:
         clusters_pos = 0
         entries = []
         size = attr['real_size']
         for entry in attr['runlist']:
             clusters_pos += entry['offset']
-            real_pos = clusters_pos * part.sec_per_clus + part.offset
-            dump = sectors(image, real_pos, size)
+            length = min(entry['length'] * spc * sector_size, size)
+            size -= length
+            real_pos = clusters_pos * spc + part.offset
+            dump = sectors(image, real_pos, length, 1)
             entries += attribute_list_parser(dump)
-            size -= FILE_size * sector_size
         attr['content'] = {'entries': entries}
     else:
         entries = attr['content']['entries']
@@ -300,6 +303,16 @@ class NTFSFile(File):
             )
         self.ads = ads
 
+    @staticmethod
+    def _padded_bytes(image, offset, size):
+        dump = sectors(image, offset, size, bsize)
+        if len(dump) < size:
+            logging.warning(
+                'Failed to read byte(s). Padding with 0x00. Offset: {} Size: '
+                '{}'.format(offset, size))
+            dump += bytearray('\x00' * (size - len(dump)))
+        return dump
+
     def content_iterator(self, partition, image, datas):
         """Return an iterator for the contents of this file."""
         vcn = 0
@@ -344,7 +357,7 @@ class NTFSFile(File):
                 while length > 0:
                     amount = min(max_sectors*sector_size, length)
                     position = real_pos*sector_size + offset
-                    partial = sectors(image, position, amount, 1)
+                    partial = _padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
                     yield str(partial)
