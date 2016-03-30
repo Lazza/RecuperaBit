@@ -305,7 +305,7 @@ class NTFSFile(File):
 
     @staticmethod
     def _padded_bytes(image, offset, size):
-        dump = sectors(image, offset, size, bsize)
+        dump = sectors(image, offset, size, 1)
         if len(dump) < size:
             logging.warning(
                 'Failed to read byte(s). Padding with 0x00. Offset: {} Size: '
@@ -357,7 +357,7 @@ class NTFSFile(File):
                 while length > 0:
                     amount = min(max_sectors*sector_size, length)
                     position = real_pos*sector_size + offset
-                    partial = _padded_bytes(image, position, amount)
+                    partial = self._padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
                     yield str(partial)
