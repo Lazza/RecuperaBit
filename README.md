@@ -52,6 +52,40 @@ can be increased by using it with the Pypy interpreter and JIT compiler:
 
     pypy main.py /path/to/disk.img
 
+### Recovery of File Contents
+
+Files can be restored one at a time or recursively, starting from a directory.
+After the scanning process has completed, you can check the list of partitions
+that can be recovered by issuing the following command at the prompt:
+
+    recoverable
+
+Each line shows information about a partition. Let's consider the following
+output example:
+
+    Partition #0 -> Partition (NTFS, 15.00 MB, 11 files, Recoverable, Offset: 2048, Offset (b): 1048576, Sec/Clus: 8, MFT offset: 2080, MFT mirror offset: 17400)
+
+If you want to recover files starting from a specific directory, you can either
+print the tree on screen with the `tree` command (very verbose for large drives)
+or you can export a CSV list of files (see `help` for details).
+
+If you rather want to extract all files from the *Root* and the *Lost Files*
+nodes, you need to know the identifier for the root directory, depending on
+the file system type. The following are those of file systems supported by
+RecuperaBit:
+
+| File System Type | Root Id |
+|------------------|---------|
+| NTFS             | 5       |
+
+The id for *Lost Files* is -1 **for every file system.**
+
+Therefore, to restore `Partition #0` in our example, you need to run:
+
+    restore 0 5
+    restore 0 -1
+
+The files will be saved inside the output directory specified by `-o`.
 
 ## License
 
