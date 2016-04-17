@@ -10,6 +10,11 @@ RecuperaBit attempts reconstruction of the directory structure regardless of:
 - partially-overwritten metadata
 - quick format
 
+You can get more information about **the reconstruction algorithms** and the
+architecture used in RecuperaBit by reading
+[my MSc thesis](https://www.scribd.com/doc/309337813/) or checking out [the
+slides](http://www.slideshare.net/TheLazza/recuperabit-forensic-file-system-reconstruction-given-partially-corrupted-metadata).
+
 ## Usage
 
     usage: main.py [-h] [-s SAVEFILE] [-w] [-o OUTPUTDIR] path
