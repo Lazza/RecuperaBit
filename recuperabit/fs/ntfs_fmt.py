@@ -92,7 +92,7 @@ def runlist_unpack(runlist):
             ('length', ('i', 1, len_bytes)),
             ('offset', ('+i', len_bytes + 1, end))
         ])
-        if decoded['length'] is None:
+        if decoded['length'] is None or decoded['offset'] is None:
             break
         pieces.append(decoded)
         runlist = runlist[end+1:]
