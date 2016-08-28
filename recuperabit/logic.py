@@ -40,9 +40,10 @@ class SparseList(object):
             self.elements.update(data)
 
     def __len__(self):
-        if len(self.keys) == 0:
+        try:
+            return self.keys[-1] + 1
+        except IndexError:
             return 0
-        return self.keys[-1] + 1
 
     def __getitem__(self, index):
         return self.elements.get(index, self.default)
@@ -144,8 +145,8 @@ def approximate_matching(records, pattern, stop, k=1):
     (namespace, name), the get function can be used to tell the algorithm how
     to access them. k is the minimum value for support."""
 
-    msize = len(pattern)
-    if len(records) == 0 or msize == 0:
+    msize = pattern.__len__()
+    if records.__len__() == 0 or msize == 0:
         return None
 
     lookup = preprocess_pattern(pattern)

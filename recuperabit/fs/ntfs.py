@@ -524,7 +524,7 @@ class NTFSScanner(DiskScanner):
         )
 
         text_list = self.indx_list
-        width = len(text_list)
+        width = text_list.__len__()
 
         base_pattern = {}
         for parsed in nodes:
