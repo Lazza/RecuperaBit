@@ -200,6 +200,11 @@ def main():
     """Wrap the program logic inside a function."""
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
+    print 'RecuperaBit', __version__
+    print __copyright__, '<%s>' % __email__
+    print 'Released under the', __license__
+    print ''
+
     parser = argparse.ArgumentParser(
         description='Reconstruct the directory structure of possibly damaged '
                     'filesystems.'
@@ -301,9 +306,4 @@ def main():
         interpret(cmd, arguments, parts, shorthands, args.outputdir)
 
 if __name__ == '__main__':
-    print 'RecuperaBit', __version__
-    print __copyright__, '<%s>' % __email__
-    print 'Released under the', __license__
-    print ''
-
     main()
