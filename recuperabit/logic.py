@@ -238,12 +238,15 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
 
     if content is not None:
         logging.info(u'Restoring #%s %s', node.index, file_path)
-        with codecs.open(restore_path, 'wb') as outfile:
-            if hasattr(content, '__iter__'):
-                for piece in content:
-                    outfile.write(piece)
-            else:
-                outfile.write(content)
+        try:
+            with codecs.open(restore_path, 'wb') as outfile:
+                if hasattr(content, '__iter__'):
+                    for piece in content:
+                        outfile.write(piece)
+                else:
+                    outfile.write(content)
+        except IOError:
+            logging.error(u'IOError when trying to write %s', restore_path)
     else:
         if not is_directory:
             # Empty file
