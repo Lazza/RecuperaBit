@@ -279,7 +279,8 @@ class NTFSFile(File):
 
         name = best_name([
             (f['content']['namespace'], f['content']['name'] + ads_suffix)
-            for f in filenames if f['content'] is not None and
+            for f in filenames if f.has_key('content') and
+            f['content'] is not None and
             f['content']['name_length'] > 0 and
             f['content']['name'] is not None
         ])
