@@ -883,15 +883,20 @@ class NTFSScanner(DiskScanner):
                                     'Merging partition with MFT offset %d into'
                                     ' %s (fragmented MFT)', piece.mft_pos, part
                                 )
-                            # Merge the partitions
-                            for index in piece.files:
-                                if (
-                                    index not in part.files or
-                                    part.files[index].is_ghost
-                                ):
-                                    part.add_file(piece.files[index])
-                            # Remove the fragment
-                            partitioned_files.pop(position)
+                                # Merge the partitions
+                                for index in piece.files:
+                                    if (
+                                        index not in part.files or
+                                        part.files[index].is_ghost
+                                    ):
+                                        part.add_file(piece.files[index])
+                                # Remove the fragment
+                                partitioned_files.pop(position)
+                            else:
+                                logging.debug(
+                                    'NOT merging partition with MFT offset %d into'
+                                    ' %s (possible fragmented MFT) due to conflicts', piece.mft_pos, part
+                                )
                     size += entry['length']
 
         return partitioned_files
