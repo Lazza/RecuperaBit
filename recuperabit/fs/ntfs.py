@@ -501,8 +501,8 @@ class NTFSScanner(DiskScanner):
     def add_from_indx_root(self, parsed, part):
         """Add ghost entries to part from INDEX_ROOT attributes in parsed."""
         for attribute in parsed['attributes']['$INDEX_ROOT']:
-            if (attribute['content'] is None or
-                    attribute['content']['records'] is None):
+            if (attribute.get('content') is None or
+                    attribute['content'].get('records') is None):
                 continue
             self.add_indx_entries(attribute['content']['records'], part)
 
