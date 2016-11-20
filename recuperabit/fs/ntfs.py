@@ -226,13 +226,19 @@ def _integrate_attribute_list(parsed, part, image):
     # Divide entries by type
     types = set(e['type'] for e in entries)
     entries_by_type = {
-        t: set(e['file_ref'] for e in entries if e['type'] == t)
+        t: set(
+            e['file_ref'] for e in entries
+            if e['type'] == t and e['file_ref'] is not None
+        )
         for t in types
     }
-    # Remove completely "local" types
+    # Remove completely "local" types or empty lists
     for num in list(entries_by_type):
         files = entries_by_type[num]
-        if len(files) == 1 and iter(files).next() == base_record:
+        if (
+            len(files) == 0 or
+            (len(files) == 1 and iter(files).next() == base_record)
+        ):
             del entries_by_type[num]
 
     mft_pos = part.mft_pos
