@@ -274,6 +274,11 @@ def main():
     if confirm in ('exit', 'quit', 'q'):
         exit(0)
 
+    # Create the output directory
+    if not logic.makedirs(args.outputdir):
+        logging.error('Cannot create output directory!')
+        exit(1)
+
     scanners = [pl(image) for pl in plugins]
 
     interesting = utils.feed_all(image, scanners, indexes)
