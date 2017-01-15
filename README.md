@@ -37,7 +37,9 @@ RecuperaBit automatically determines the sectors from which partitions start.
 
 RecuperaBit does not modify the disk image, however it does read some parts of
 it multiple times through the execution. It should also work on real devices,
-such as `/dev/sda` but **this is not advised.**
+such as `/dev/sda` but **this is not advised** for damaged drives. RecuperaBit
+might worsen the situation by "stressing" a damaged drive or it could crash due
+to an I/O error.
 
 Optionally, a save file can be specified with `-s`. The first time, after the
 scanning process, results are saved in the file. After the first run, the file
