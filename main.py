@@ -35,7 +35,7 @@ from recuperabit import logic
 from recuperabit.fs.ntfs import NTFSScanner
 
 __author__ = "Andrea Lazzarotto"
-__copyright__ = "Copyright 2014-2016, Andrea Lazzarotto"
+__copyright__ = "Copyright 2014-2017, Andrea Lazzarotto"
 __license__ = "GPLv3"
 __version__ = "1.0"
 __maintainer__ = "Andrea Lazzarotto"
@@ -63,6 +63,7 @@ commands = (
     ('bodyfile <part#> <path>', 'Save a body file representation in a file'),
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
     ('restore <part#> <file>', 'Recursively restore files from <file>'),
+    ('locate <part#> <text>', 'Print all file paths that match a string'),
     ('quit', 'Close the program')
 )
 
@@ -183,7 +184,20 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                     print 'The index is not valid'
                 else:
                     logic.recursive_restore(myfile, part, partition_dir)
-
+    elif cmd == 'locate':
+        if len(arguments) != 2:
+            print 'Wrong number of parameters!'
+        else:
+            part = check_valid_part(arguments[0], parts, shorthands)
+            if part is not None:
+                text = arguments[1]
+                results = utils.locate(part, text)
+                for node, path in results:
+                    desc = (
+                        ' [GHOST]' if node.is_ghost else
+                        ' [DELETED]' if node.is_deleted else ''
+                    )
+                    print "[%s]: %s%s" % (node.index, path, desc)
     elif cmd == 'recoverable':
         list_parts(parts, shorthands, lambda x: x.recoverable)
     elif cmd == 'other':

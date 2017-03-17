@@ -337,3 +337,24 @@ def csv_part(part):
                 )
         )
     return contents
+
+
+def _sub_locate(text, directory, part):
+    """Helper for locate."""
+    lines = []
+    for entry in sorted(directory.children, key=lambda node: node.name):
+        path = entry.full_path(part)
+        if text in path.lower():
+            lines.append((entry, path))
+        if len(entry.children) or entry.is_directory:
+            lines += _sub_locate(text, entry, part)
+    return lines
+
+
+def locate(part, text):
+    """Return paths of files matching the text."""
+    lines = []
+    text = text.lower()
+    lines += _sub_locate(text, part.lost, part)
+    lines += _sub_locate(text, part.root, part)
+    return lines
