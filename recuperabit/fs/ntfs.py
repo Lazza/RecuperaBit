@@ -794,7 +794,9 @@ class NTFSScanner(DiskScanner):
                             '$DATA' in mirror['attributes']):
                         datas = mirror['attributes']['$DATA']
                         if (len(datas) == 1 and datas[0]['non_resident'] and
-                                'runlist' in datas[0]):
+                                'runlist' in datas[0] and
+                                len(datas[0]['runlist']) > 0 and
+                                'offset' in datas[0]['runlist'][0]):
                             relative = datas[0]['runlist'][0]['offset']
                             spc = part.sec_per_clus
                             if spc is None:
