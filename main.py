@@ -21,6 +21,12 @@
 
 
 import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+# I think that is for German letters, like äöüß?!?
+# I get a Encoding error "ascii", after this change here, my restore working fine.
+
+
 import logging
 import argparse
 import pickle
