@@ -361,3 +361,13 @@ def locate(part, text):
     lines += _sub_locate(text, part.lost, part)
     lines += _sub_locate(text, part.root, part)
     return lines
+
+
+def merge(part, piece):
+    """Merge piece into part (both are partitions)."""
+    for index in piece.files:
+        if (
+            index not in part.files or
+            part.files[index].is_ghost
+        ):
+            part.add_file(piece.files[index])

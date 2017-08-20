@@ -25,7 +25,7 @@ including MFT entries and directory indexes."""
 import logging
 from collections import Counter
 
-from ..utils import sectors, unpack
+from ..utils import sectors, unpack, merge
 from ..logic import approximate_matching, SparseList
 
 from constants import sector_size, max_sectors
@@ -892,12 +892,7 @@ class NTFSScanner(DiskScanner):
                                     ' %s (fragmented MFT)', piece.mft_pos, part
                                 )
                                 # Merge the partitions
-                                for index in piece.files:
-                                    if (
-                                        index not in part.files or
-                                        part.files[index].is_ghost
-                                    ):
-                                        part.add_file(piece.files[index])
+                                utils.merge(part, piece)
                                 # Remove the fragment
                                 partitioned_files.pop(position)
                             else:

@@ -64,6 +64,7 @@ commands = (
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
     ('restore <part#> <file>', 'Recursively restore files from <file>'),
     ('locate <part#> <text>', 'Print all file paths that match a string'),
+    ('merge <part#> <part#>', 'Merge the two partitions into the first one'),
     ('quit', 'Close the program')
 )
 
@@ -77,7 +78,7 @@ def list_parts(parts, shorthands, test):
             print 'Partition #' + str(i), '->', parts[part]
 
 
-def check_valid_part(num, parts, shorthands):
+def check_valid_part(num, parts, shorthands, rebuild=True):
     """Check if the required partition is valid."""
     try:
         i = int(num)
@@ -87,7 +88,7 @@ def check_valid_part(num, parts, shorthands):
     if i in xrange(len(shorthands)):
         i, par = shorthands[i]
         part = parts[par]
-        if par not in rebuilt:
+        if rebuild and par not in rebuilt:
             print 'Rebuilding partition...'
             part.rebuild()
             rebuilt.add(par)
@@ -198,6 +199,28 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                         ' [DELETED]' if node.is_deleted else ''
                     )
                     print "[%s]: %s%s" % (node.index, path, desc)
+    elif cmd == 'merge':
+        if len(arguments) != 2:
+            print 'Wrong number of parameters!'
+        else:
+            part1 = check_valid_part(arguments[0], parts, shorthands, rebuild=False)
+            part2 = check_valid_part(arguments[1], parts, shorthands, rebuild=False)
+            if None in (part1, part2):
+                return
+            if part1.fs_type != part2.fs_type:
+                print 'Cannot merge partitions with types (%s, %s)' % (part1.fs_type, part2.fs_type)
+                return
+            print 'Merging partitions...'
+            utils.merge(part1, part2)
+            position = int(arguments[1])
+            _, par = shorthands[position]
+            del shorthands[position]
+            del parts[par]
+            try:
+                rebuilt.remove(par)
+            except:
+                pass
+            print 'There are now %d partitions.' % (len(parts), )
     elif cmd == 'recoverable':
         list_parts(parts, shorthands, lambda x: x.recoverable)
     elif cmd == 'other':
