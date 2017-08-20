@@ -36,7 +36,7 @@ unicode_printable = set(
 ascii_printable = set(string.printable[:-5])
 
 
-def sectors(image, offset, size, bsize=sector_size):
+def sectors(image, offset, size, bsize=sector_size, fill=True):
     """Read from a file descriptor."""
     read = True
     try:
@@ -53,7 +53,9 @@ def sectors(image, offset, size, bsize=sector_size):
             )
             read = False
     if not read:
-        dump = size * bsize * '\x00'
+        if fill:
+            dump = size * bsize * '\x00'
+        else return None
     return bytearray(dump)
 
 
@@ -118,7 +120,7 @@ def feed_all(image, scanners, indexes):
     # Scan the disk image and feed the scanners
     interesting = []
     for index in indexes:
-        sector = sectors(image, index, 1)
+        sector = sectors(image, index, 1, fill=False)
         if not sector:
             break
 
