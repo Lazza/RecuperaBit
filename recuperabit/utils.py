@@ -55,7 +55,8 @@ def sectors(image, offset, size, bsize=sector_size, fill=True):
     if not read:
         if fill:
             dump = size * bsize * '\x00'
-        else return None
+        else:
+            return None
     return bytearray(dump)
 
 
