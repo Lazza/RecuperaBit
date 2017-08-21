@@ -892,7 +892,7 @@ class NTFSScanner(DiskScanner):
                                     ' %s (fragmented MFT)', piece.mft_pos, part
                                 )
                                 # Merge the partitions
-                                utils.merge(part, piece)
+                                merge(part, piece)
                                 # Remove the fragment
                                 partitioned_files.pop(position)
                             else:
