@@ -212,14 +212,17 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 return
             print 'Merging partitions...'
             utils.merge(part1, part2)
-            position = int(arguments[1])
-            _, par = shorthands[position]
-            del shorthands[position]
-            del parts[par]
-            try:
-                rebuilt.remove(par)
-            except:
-                pass
+            source_position = int(arguments[1])
+            destination_position = int(arguments[0])
+            _, par_source = shorthands[source_position]
+            _, par_destination = shorthands[destination_position]
+            del shorthands[source_position]
+            del parts[par_source]
+            for par in (par_source, par_destination):
+                try:
+                    rebuilt.remove(par)
+                except:
+                    pass
             print 'There are now %d partitions.' % (len(parts), )
     elif cmd == 'recoverable':
         list_parts(parts, shorthands, lambda x: x.recoverable)

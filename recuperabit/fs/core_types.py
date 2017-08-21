@@ -77,6 +77,9 @@ class File(object):
         """Add a new child to this directory."""
         original_name = node.name
         i = 0
+        # Check for multiple rebuilds
+        if node in self.children:
+            return
         # Avoid name clashes
         while node.name in self.children_names:
             node.name = original_name + '_%03d' % i
