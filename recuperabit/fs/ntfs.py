@@ -4,7 +4,7 @@ This plug-in contains the necessary logic to parse traces of NTFS file systems,
 including MFT entries and directory indexes."""
 
 # RecuperaBit
-# Copyright 2014-2016 Andrea Lazzarotto
+# Copyright 2014-2017 Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #

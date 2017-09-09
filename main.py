@@ -2,7 +2,7 @@
 """Main RecuperaBit process."""
 
 # RecuperaBit
-# Copyright 2014-2016 Andrea Lazzarotto
+# Copyright 2014-2017 Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
