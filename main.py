@@ -35,9 +35,9 @@ from recuperabit import logic
 from recuperabit.fs.ntfs import NTFSScanner
 
 __author__ = "Andrea Lazzarotto"
-__copyright__ = "Copyright 2014-2017, Andrea Lazzarotto"
+__copyright__ = "(c) 2014-2017, Andrea Lazzarotto"
 __license__ = "GPLv3"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "Andrea Lazzarotto"
 __email__ = "andrea.lazzarotto@gmail.com"
 
@@ -240,9 +240,13 @@ def main():
     """Wrap the program logic inside a function."""
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-    print 'RecuperaBit', __version__
-    print __copyright__, '<%s>' % __email__
-    print 'Released under the', __license__
+    print "     ___                                ___ _ _   "
+    print "    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ "
+    print "    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|"
+    print "    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|"
+    print "                    |_|   v{}".format(__version__)
+    print '   ', __copyright__, '<%s>' % __email__
+    print '    Released under the', __license__
     print ''
 
     parser = argparse.ArgumentParser(
