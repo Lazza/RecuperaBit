@@ -283,12 +283,15 @@ class NTFSFile(File):
                     size = attr['content_size']
                 break
 
-        name = best_name([
-            (f['content']['namespace'], f['content']['name'] + ads_suffix)
-            for f in filenames if f.has_key('content') and
+        filtered = [
+            f for f in filenames if f.has_key('content') and
             f['content'] is not None and
             f['content']['name_length'] > 0 and
             f['content']['name'] is not None
+        ]
+        name = best_name([
+            (f['content']['namespace'], f['content']['name'] + ads_suffix)
+            for f in filtered
         ])
         hasname = name is not None
 
@@ -300,10 +303,10 @@ class NTFSFile(File):
         File.__init__(self, index, name, size, is_dir, is_del, is_ghost)
         # Additional attributes
         if hasname:
-            parent_id = filenames[0]['content']['parent_entry']
+            first = filtered[0]['content']
+            parent_id = first['parent_entry']
             File.set_parent(self, parent_id)
             File.set_offset(self, offset)
-            first = filenames[0]['content']
             File.set_mac(
                 self, first['modification_time'],
                 first['access_time'], first['creation_time']
