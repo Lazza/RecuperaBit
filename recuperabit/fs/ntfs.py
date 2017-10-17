@@ -635,7 +635,7 @@ class NTFSScanner(DiskScanner):
         if '$DATA' in attrs:
             for attribute in attrs['$DATA']:
                 ads_name = attribute['name']
-                if len(ads_name):
+                if ads_name and len(ads_name):
                     part.add_file(NTFSFile(parsed, offset, ads=ads_name))
 
     def add_from_mft_mirror(self, part):
@@ -719,7 +719,8 @@ class NTFSScanner(DiskScanner):
                 if '$DATA' in attributes:
                     for attribute in attributes['$DATA']:
                         ads_name = attribute['name']
-                        part.add_file(NTFSFile(parsed, position, ads=ads_name))
+                        if ads_name:
+                            part.add_file(NTFSFile(parsed, position, ads=ads_name))
                 """Add the file again, just in case the $DATA attributes are
                 missing."""
                 part.add_file(NTFSFile(parsed, position))
