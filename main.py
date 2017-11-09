@@ -302,6 +302,7 @@ def main():
         logging.info('The save file exists. Trying to read it...')
         try:
             indexes = pickle.load(savefile)
+            savefile.close()
         except IndexError:
             logging.error('Malformed save file!')
             exit(1)
@@ -331,8 +332,8 @@ def main():
 
     if write_results:
         logging.info('Saving results to %s', args.savefile)
-        savefile = open(args.savefile, 'wb')
-        pickle.dump(interesting, savefile)
+        with open(args.savefile, 'wb') as savefile:
+            pickle.dump(interesting, savefile)
 
     # Ask for partitions
     parts = {}
