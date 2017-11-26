@@ -113,7 +113,8 @@ def attribute_list_parser(dump):
             ('id', ('i', 24, 24))
         ])
         length = decoded['length']
-        if length == 0:
+        # Check either if the length is 0 or if it is None
+        if not length:
             break
         content.append(decoded)
         dump = dump[length:]
