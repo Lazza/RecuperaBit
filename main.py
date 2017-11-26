@@ -326,6 +326,7 @@ def main():
 
     scanners = [pl(image) for pl in plugins]
 
+    logging.info('Analysis started! This is going to take time...')
     interesting = utils.feed_all(image, scanners, indexes)
 
     logging.info('First scan completed')
