@@ -47,7 +47,6 @@ sys.setdefaultencoding('utf-8')
 
 """Wrapping sys.stdout into an instance of StreamWriter will allow writing
 unicode data with sys.stdout.write() and print.
-unicode data with sys.stdout.write() and print.
 https://wiki.python.org/moin/PrintFails"""
 sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
 sys.stderr = codecs.getwriter(locale.getpreferredencoding())(sys.stderr)
