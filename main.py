@@ -21,12 +21,6 @@
 
 
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
-# I think that is for German letters, like äöüß?!?
-# I get a Encoding error "ascii", after this change here, my restore working fine.
-
-
 import logging
 import argparse
 import pickle
@@ -48,7 +42,11 @@ __maintainer__ = "Andrea Lazzarotto"
 __email__ = "andrea.lazzarotto@gmail.com"
 
 
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 """Wrapping sys.stdout into an instance of StreamWriter will allow writing
+unicode data with sys.stdout.write() and print.
 unicode data with sys.stdout.write() and print.
 https://wiki.python.org/moin/PrintFails"""
 sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
