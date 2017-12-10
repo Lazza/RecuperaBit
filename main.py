@@ -67,6 +67,7 @@ commands = (
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
     ('restore <part#> <file>', 'Recursively restore files from <file>'),
     ('locate <part#> <text>', 'Print all file paths that match a string'),
+    ('traceback <part#> <file>', 'Print ids and paths for all ancestors of <file>'),
     ('merge <part#> <part#>', 'Merge the two partitions into the first one'),
     ('quit', 'Close the program')
 )
@@ -202,6 +203,27 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                         ' [DELETED]' if node.is_deleted else ''
                     )
                     print "[%s]: %s%s" % (node.index, path, desc)
+    elif cmd == 'traceback':
+        if len(arguments) != 2:
+            print 'Wrong number of parameters!'
+        else:
+            partid = arguments[0]
+            part = check_valid_part(partid, parts, shorthands)
+            if part is not None:
+                index = arguments[1]
+                myfile = None
+                try:
+                    indexi = int(index)
+                except ValueError:
+                    indexi = index
+                for i in [index, indexi]:
+                    myfile = part.get(i, myfile)
+                if myfile is None:
+                    print 'The index is not valid'
+                else:
+                    while myfile is not None:
+                        print "[{}] {}".format(myfile.index, myfile.full_path(part))
+                        myfile = part.get(myfile.parent)
     elif cmd == 'merge':
         if len(arguments) != 2:
             print 'Wrong number of parameters!'
