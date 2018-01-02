@@ -125,7 +125,7 @@ def preprocess_pattern(pattern):
     This function performs preprocessing for the Baeza-Yates--Perleberg
     fast and practical approximate string matching algorithm."""
     result = {}
-    length = len(pattern)
+    length = pattern.__len__()
     for k in pattern:
         name = pattern[k]
         if name not in result:
