@@ -272,7 +272,7 @@ class NTFSFile(File):
             index = unicode(index) + ads_suffix
         attrs = parsed['attributes']
         filenames = attrs['$FILE_NAME']
-        datas = attrs['$DATA'] if '$DATA' in attrs else []
+        datas = attrs.get('$DATA', [])
 
         size = None
         for attr in datas:
@@ -703,7 +703,7 @@ class NTFSScanner(DiskScanner):
                     'Problem parsing record on sector %d', position
                 )
                 continue
-            attrs = parsed['attributes'] if 'attributes' in parsed else {}
+            attrs = parsed.get('attributes', {})
             if not parsed['valid'] or '$FILE_NAME' not in attrs:
                 continue
 
