@@ -129,7 +129,6 @@ def _attributes_reader(entry, offset):
                     attributes[name].append(attr)
                 else:
                     logging.error('Cannot handle multiple attribute %s', name)
-                    raise NotImplementedError
     return attributes
 
 
@@ -696,13 +695,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Parsing MFT entries')
         for position in self.found_file:
             dump = sectors(img, position, FILE_size)
-            try:
-                parsed = parse_file_record(dump)
-            except NotImplementedError:
-                logging.error(
-                    'Problem parsing record on sector %d', position
-                )
-                continue
+            parsed = parse_file_record(dump)
             attrs = parsed.get('attributes', {})
             if not parsed['valid'] or '$FILE_NAME' not in attrs:
                 continue
