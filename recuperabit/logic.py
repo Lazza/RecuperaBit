@@ -202,7 +202,6 @@ def makedirs(path):
             return False
     return True
 
-
 def recursive_restore(node, part, outputdir, make_dirs=True):
     """Restore a directory structure starting from a file node."""
     parent_path = unicode(
@@ -210,9 +209,13 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
         else ''
     )
 
-    file_path = os.path.join(parent_path, node.name)
-    restore_parent_path = os.path.join(outputdir, parent_path)
-    restore_path = os.path.join(outputdir, file_path)
+    # convert full paths to ascii
+    file_path = os.path.join(parent_path, node.name)\
+                .decode('utf-8').encode('ascii','backslashreplace')
+    restore_parent_path = os.path.join(outputdir, parent_path)\
+                .decode('utf-8').encode('ascii','backslashreplace')
+    restore_path = os.path.join(outputdir, file_path)\
+                .decode('utf-8').encode('ascii','backslashreplace')
 
     try:
         content = node.get_content(part)
