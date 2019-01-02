@@ -189,9 +189,19 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 else:
                     logic.recursive_restore(myfile, part, partition_dir)
     elif cmd == 'locate':
-        if len(arguments) != 2:
-            print 'Wrong number of parameters!'
-        else:
+        if len(arguments) == 1:
+            text = arguments[0]
+            for i, partidx in shorthands:
+                part = check_valid_part(i, parts, shorthands)
+                if part is not None:
+                    results = utils.locate(part, text)
+                    for node, path in results:
+                        desc = (
+                            ' [GHOST]' if node.is_ghost else
+                            ' [DELETED]' if node.is_deleted else ''
+                        )
+                        print "partition %s [%s]: %s%s" % (i, node.index, path, desc)
+        elif len(arguments) == 2:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
                 text = arguments[1]
@@ -202,6 +212,8 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                         ' [DELETED]' if node.is_deleted else ''
                     )
                     print "[%s]: %s%s" % (node.index, path, desc)
+        else:
+            print 'Wrong number of parameters!'
     elif cmd == 'traceback':
         if len(arguments) != 2:
             print 'Wrong number of parameters!'
