@@ -236,21 +236,21 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
         logging.warning(u'Directory %s has data content!', file_path)
         restore_path += '_recuperabit_content'
 
-    if content is not None:
-        logging.info(u'Restoring #%s %s', node.index, file_path)
-        try:
+    try:
+        if content is not None:
+            logging.info(u'Restoring #%s %s', node.index, file_path)
             with codecs.open(restore_path, 'wb') as outfile:
                 if hasattr(content, '__iter__'):
                     for piece in content:
                         outfile.write(piece)
                 else:
                     outfile.write(content)
-        except IOError:
-            logging.error(u'IOError when trying to write %s', restore_path)
-    else:
-        if not is_directory:
-            # Empty file
-            open(restore_path, 'wb').close()
+        else:
+            if not is_directory:
+                # Empty file
+                open(restore_path, 'wb').close()
+    except IOError:
+        logging.error(u'IOError when trying to create %s', restore_path)
 
     if is_directory:
         for child in node.children:
