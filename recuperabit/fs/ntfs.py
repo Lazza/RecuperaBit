@@ -174,10 +174,8 @@ def parse_indx_record(entry):
                     entry[offset + 16:],
                     attr_types_fmt['$FILE_NAME']
                 )
-            except UnicodeDecodeError:  # Invalid file name
-                pass
-            except TypeError:   # Invalid name length
-                pass
+            except (UnicodeDecodeError, TypeError):  # Invalid file name or invalid name length
+                break
             # Perform checks to avoid false positives
             name_ok = file_name['name'] is not None
             namespace_ok = 0 <= file_name['namespace'] <= 3

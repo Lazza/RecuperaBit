@@ -46,7 +46,7 @@ def sectors(image, offset, size, bsize=sector_size, fill=True):
     if read:
         try:
             dump = image.read(size * bsize)
-        except IOError, MemoryError:
+        except (IOError, MemoryError):
             logging.warning(
                 "Cannot read sector(s). Filling with 0x00. Offset: {} Size: "
                 "{} Bsize: {}".format(offset, size, bsize)
