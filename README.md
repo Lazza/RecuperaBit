@@ -1,7 +1,6 @@
 # ![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
 
-[![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/AndreaLazzarotto/) &nbsp;&nbsp;
-[![gitcheese.com](https://s3.amazonaws.com/gitcheese-ui-master/images/badge.svg)](https://www.gitcheese.com/donate/users/8294041/repos/50295498)
+[![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/AndreaLazzarotto/)
 
 A software which attempts to reconstruct file system structures and recover
 files. Currently it supports only NTFS.
