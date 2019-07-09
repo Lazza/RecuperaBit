@@ -77,6 +77,8 @@ def parse_mft_attr(attr):
 
     if header['non_resident']:
         nonresident = unpack(attr, attr_nonresident_fmt)
+        if nonresident['runlist'] is None:
+            nonresident['runlist'] = list()
         header.update(nonresident)
     else:
         resident = unpack(attr, attr_resident_fmt)
