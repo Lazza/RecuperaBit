@@ -1,3 +1,5 @@
+
+
 # ![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
 
 [![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/AndreaLazzarotto/)
@@ -60,6 +62,43 @@ RecuperaBit can be run with the standard cPython implementation, however speed
 can be increased by using it with the Pypy interpreter and JIT compiler:
 
     pypy main.py /path/to/disk.img
+
+### Docker
+The container is built on top of debian:buster and pypy 
+
+Before you start pull the newest version
+
+    docker pull h4r0/recuperabit
+
+To automatically destroy the container after use run it with --rm
+
+    docker run -it --rm h4r0/recuperabit --help
+
+Example for a drive image copy created with dd/ddrescue etc. (recommended)
+Adjust the paths "*/path/to/*" to your needs
+
+    docker run -it --rm \
+    -v "/path/to/drive.img:/drive.img" \
+    -v "/path/to/outputdir/:/output" \
+    -v "/path/to/save.log:/save.log" \
+    h4r0/recuperabit
+
+The arguments "-s, -o" and "path" are passed by default, if you want to run custom args specifiy them after "*h4r0/recuperabit*"
+
+    docker run -it --rm \
+    -v "/path/to/drive.img:/drive.img" \
+    -v "/path/to/outputdir/:/output" \
+    -v "/path/to/save.log:/save.log" \
+    h4r0/recuperabit -w -o /output /drive.img
+
+Working directly with raw devices for example /dev/sda
+
+    docker run -it --rm \
+    --device /dev/sda \
+    -v "/path/to/outputdir/:/output" \
+    -v "/path/to/save.log:/save.log" \ 
+    h4r0/recuperabit -s /save.log -o /output /dev/sda
+
 
 ### Recovery of File Contents
 
