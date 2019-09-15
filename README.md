@@ -74,6 +74,7 @@ To automatically destroy the container after use run it with --rm
 
     docker run -it --rm h4r0/recuperabit --help
 
+Example for a drive image copy created with dd/ddrescue etc. (recommended)
 Adjust the paths "*/path/to/*" to your needs
 
     docker run -it --rm \
@@ -90,6 +91,13 @@ The arguments "-s, -o" and "path" are passed by default, if you want to run cust
     -v "/path/to/save.log:/save.log" \
     h4r0/recuperabit -w -o /output /drive.img
 
+Working directly with raw devices for example /dev/sda
+
+    docker run -it --rm \
+    --device /dev/sda \
+    -v "/path/to/outputdir/:/output" \
+    -v "/path/to/save.log:/save.log" \ 
+    h4r0/recuperabit -s /save.log -o /output /dev/sda
 
 
 ### Recovery of File Contents
@@ -126,7 +134,6 @@ Therefore, to restore `Partition #0` in our example, you need to run:
     restore 0 -1
 
 The files will be saved inside the output directory specified by `-o`.
-
 
 ## License
 
