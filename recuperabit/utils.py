@@ -26,10 +26,10 @@ import sys
 import time
 import unicodedata
 
-from fs.constants import sector_size
+from .fs.constants import sector_size
 
 printer = pprint.PrettyPrinter(indent=4)
-all_chars = (unichr(i) for i in xrange(sys.maxunicode))
+all_chars = (chr(i) for i in range(sys.maxunicode))
 unicode_printable = set(
     c for c in all_chars
     if not unicodedata.category(c)[0].startswith('C')
@@ -145,11 +145,11 @@ def hexdump(stream, count=16):
     """Return a nice hexadecimal dump representation of stream."""
     stream = str(stream)
     encoded = stream.encode('hex')
-    chunks = [encoded[i:i+2] for i in xrange(0, len(encoded), 2)]
+    chunks = [encoded[i:i+2] for i in range(0, len(encoded), 2)]
     lines = (
         u'%08d: ' % i + ' '.join(chunks[i:i+count]) + ' | ' +
         printable(stream[i:i+count], alphabet=ascii_printable)
-        for i in xrange(0, len(chunks), count)
+        for i in range(0, len(chunks), count)
     )
     return '\n'.join(lines)
 
@@ -285,7 +285,7 @@ def tikz_child(directory, padding=0):
         lines.append(content)
         count += number
     lines.append('}')
-    for entry in xrange(count):
+    for entry in range(count):
         lines.append('child [missing] {}')
     return '\n'.join(lines).replace('\n}', '}'), count
 

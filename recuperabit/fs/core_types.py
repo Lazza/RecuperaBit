@@ -26,7 +26,7 @@ and DiskScanner classes with subclasses implementing the missing methods."""
 import logging
 import os.path
 
-from constants import sector_size
+from .constants import sector_size
 
 from ..utils import readable_bytes
 

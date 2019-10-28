@@ -26,7 +26,7 @@ import os
 import os.path
 import sys
 
-from utils import tiny_repr
+from .utils import tiny_repr
 
 
 class SparseList(object):
@@ -36,7 +36,7 @@ class SparseList(object):
         self.elements = {}
         self.default = default
         if data is not None:
-            self.keys = sorted(data.iterkeys())
+            self.keys = sorted(iter(data))
             self.elements.update(data)
 
     def __len__(self):
@@ -71,7 +71,7 @@ class SparseList(object):
             k = self.keys[0]
             elems.append(str(k) + ' -> ' + tiny_repr(self.elements[k]))
             prevk = self.keys[0]
-        for i in xrange(1, len(self.elements)):
+        for i in range(1, len(self.elements)):
             nextk = self.keys[i]
             if nextk <= prevk + 2:
                 while prevk < nextk - 1:

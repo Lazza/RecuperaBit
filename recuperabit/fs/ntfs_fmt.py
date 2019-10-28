@@ -27,7 +27,7 @@ from ..utils import printable, unpack
 def printable_name(name):
     """Return a printable name decoded in UTF-16."""
     decoded = []
-    parts = (name[i:i+2] for i in xrange(0, len(name), 2))
+    parts = (name[i:i+2] for i in range(0, len(name), 2))
     for part in parts:
         try:
             decoded.append(part.decode('utf-16'))
