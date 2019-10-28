@@ -25,9 +25,9 @@ including MFT entries and directory indexes."""
 import logging
 from collections import Counter
 
-from constants import max_sectors, sector_size
-from core_types import DiskScanner, File, Partition
-from ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
+from .constants import max_sectors, sector_size
+from .core_types import DiskScanner, File, Partition
+from .ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
                       attr_resident_fmt, attr_types_fmt, attribute_list_parser,
                       boot_sector_fmt, entry_fmt, indx_dir_entry_fmt, indx_fmt,
                       indx_header_fmt)

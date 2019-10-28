@@ -26,10 +26,10 @@ import sys
 import time
 import unicodedata
 
-from fs.constants import sector_size
+from .fs.constants import sector_size
 
 printer = pprint.PrettyPrinter(indent=4)
-all_chars = (unichr(i) for i in xrange(sys.maxunicode))
+all_chars = (chr(i) for i in range(sys.maxunicode))
 unicode_printable = set(
     c for c in all_chars
     if not unicodedata.category(c)[0].startswith('C')
