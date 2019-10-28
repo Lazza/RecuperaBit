@@ -20,7 +20,8 @@
 
 
 from datetime import datetime
-from ..utils import unpack, printable
+
+from ..utils import printable, unpack
 
 
 def printable_name(name):

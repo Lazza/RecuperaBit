@@ -25,16 +25,15 @@ including MFT entries and directory indexes."""
 import logging
 from collections import Counter
 
-from ..utils import sectors, unpack, merge
-from ..logic import approximate_matching, SparseList
+from constants import max_sectors, sector_size
+from core_types import DiskScanner, File, Partition
+from ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
+                      attr_resident_fmt, attr_types_fmt, attribute_list_parser,
+                      boot_sector_fmt, entry_fmt, indx_dir_entry_fmt, indx_fmt,
+                      indx_header_fmt)
 
-from constants import sector_size, max_sectors
-from core_types import File, Partition, DiskScanner
-
-from ntfs_fmt import entry_fmt, boot_sector_fmt, indx_fmt, indx_header_fmt
-from ntfs_fmt import indx_dir_entry_fmt, attr_header_fmt, attr_resident_fmt
-from ntfs_fmt import attr_nonresident_fmt, attr_names, attr_types_fmt
-from ntfs_fmt import attribute_list_parser
+from ..logic import SparseList, approximate_matching
+from ..utils import merge, sectors, unpack
 
 # Some attributes may appear multiple times
 multiple_attributes = set([
