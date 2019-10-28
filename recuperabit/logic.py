@@ -19,12 +19,12 @@
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
+import bisect
+import codecs
+import logging
 import os
 import os.path
 import sys
-import logging
-import bisect
-import codecs
 
 from utils import tiny_repr
 

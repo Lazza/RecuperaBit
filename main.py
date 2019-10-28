@@ -20,17 +20,16 @@
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
-import sys
-import logging
 import argparse
-import pickle
+import codecs
 import itertools
 import locale
-import codecs
+import logging
 import os.path
+import pickle
+import sys
 
-from recuperabit import utils
-from recuperabit import logic
+from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
 
