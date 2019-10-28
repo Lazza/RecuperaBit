@@ -26,7 +26,7 @@ import os
 import os.path
 import sys
 
-from utils import tiny_repr
+from .utils import tiny_repr
 
 
 class SparseList(object):

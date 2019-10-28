@@ -374,7 +374,7 @@ def main():
         try:
             command = raw_input().strip().split(' ')
         except EOFError:
-            print ''
+            print('')
             exit(0)
         cmd = command[0]
         arguments = command[1:]
