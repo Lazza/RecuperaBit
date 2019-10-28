@@ -23,11 +23,12 @@ and DiskScanner classes with subclasses implementing the missing methods."""
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
-from ..utils import readable_bytes
+import logging
+import os.path
+
 from constants import sector_size
 
-import os.path
-import logging
+from ..utils import readable_bytes
 
 
 class File(object):

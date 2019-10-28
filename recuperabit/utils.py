@@ -19,12 +19,13 @@
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
-import string
+import logging
 import pprint
+import string
 import sys
 import time
 import unicodedata
-import logging
+
 from fs.constants import sector_size
 
 printer = pprint.PrettyPrinter(indent=4)
