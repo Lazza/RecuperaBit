@@ -86,7 +86,7 @@ class File(object):
             node.name = original_name + '_%03d' % i
             i += 1
         if node.name != original_name:
-            logging.warning('Renamed {} from {}'.format(node, original_name))
+            logging.warning(u'Renamed {} from {}'.format(node, original_name))
         self.children.add(node)
         self.children_names.add(node.name)
 
