@@ -88,7 +88,7 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     except ValueError:
         print('Value is not valid!')
         return None
-    if i in xrange(len(shorthands)):
+    if i in range(len(shorthands)):
         i, par = shorthands[i]
         part = parts[par]
         if rebuild and par not in rebuilt:
@@ -335,7 +335,7 @@ def main():
 
     # Ask for confirmation before beginning the process
     try:
-        confirm = raw_input('Type [Enter] to start the analysis or '
+        confirm = input('Type [Enter] to start the analysis or '
                             '"exit" / "quit" / "q" to quit: ')
     except EOFError:
         print('')
@@ -372,7 +372,7 @@ def main():
         print('\nWrite command ("help" for details):')
         print('>')
         try:
-            command = raw_input().strip().split(' ')
+            command = input().strip().split(' ')
         except EOFError:
             print('')
             exit(0)

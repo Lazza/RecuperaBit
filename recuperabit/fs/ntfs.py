@@ -97,7 +97,7 @@ def parse_mft_attr(attr):
 def _apply_fixup_values(header, entry):
     """Apply the fixup values to FILE and INDX records."""
     offset = header['off_fixup']
-    for i in xrange(1, header['n_entries']):
+    for i in range(1, header['n_entries']):
         pos = sector_size * i
         entry[pos-2:pos] = entry[offset + 2*i:offset + 2*(i+1)]
 
@@ -472,17 +472,17 @@ class NTFSScanner(DiskScanner):
     def feed(self, index, sector):
         """Feed a new sector."""
         # check boot sector
-        if sector.endswith('\x55\xAA') and 'NTFS' in sector[:8]:
+        if str(sector).endswith('\x55\xAA') and 'NTFS' in sector[:8]:
             self.found_boot.append(index)
             return 'NTFS boot sector'
 
         # check file record
-        if sector.startswith(('FILE', 'BAAD')):
+        if str(sector).startswith(('FILE', 'BAAD')):
             self.found_file.add(index)
             return 'NTFS file record'
 
         # check index record
-        if sector.startswith('INDX'):
+        if str(sector).startswith('INDX'):
             self.found_indx.add(index)
             return 'NTFS index record'
 
@@ -518,7 +518,7 @@ class NTFSScanner(DiskScanner):
         to speed up the search."""
         counter = Counter()
         counter.update(self.found_spc)
-        counter.update(2**i for i in xrange(8))
+        counter.update(2**i for i in range(8))
         return [i for i, _ in counter.most_common()]
 
     def find_boundary(self, part, mft_address, multipliers):
@@ -643,7 +643,7 @@ class NTFSScanner(DiskScanner):
         if mirrpos is None:
             return
 
-        for i in xrange(4):
+        for i in range(4):
             node = part.get(i)
             if node is None or node.is_ghost:
                 position = mirrpos + i * FILE_size
