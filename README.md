@@ -58,7 +58,7 @@ are exported in the directory specified by `-o` (or `recuperabit_output`).
 
 ### Limitation
 
-Currently RecuperaBit does not work with a compressed NTFS filesystem.
+Currently RecuperaBit does not work with compressed files on an NTFS filesystem.
 
 ### Pypy
 
