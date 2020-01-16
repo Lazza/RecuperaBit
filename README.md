@@ -56,6 +56,10 @@ and export the contents of a partition in CSV or
 [body file](http://wiki.sleuthkit.org/index.php?title=Body_file) format. These
 are exported in the directory specified by `-o` (or `recuperabit_output`).
 
+### Limitation
+
+Currently RecuperaBit does not work with compressed files on an NTFS filesystem. If you have deep knowledge of the inner workings of file compression on NTFS filesystem, your help would be much appreciated, as available documentation is quite sparse on the topic.
+
 ### Pypy
 
 RecuperaBit can be run with the standard cPython implementation, however speed
