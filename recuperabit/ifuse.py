@@ -1,7 +1,9 @@
 from errno import *
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+from stat import S_IFDIR, S_IFLNK, S_IFREG
 
 import os, sys
+from time import time
 
 # was originally named fuse.py until i realized it conflicted with fusepy
 
@@ -75,3 +77,27 @@ class PartView(Operations):
                 dirents.append(_file_view_repr(entry))
         for r in dirents:
             yield r
+
+    def getattr(self, path, fh=None):
+        file = self.get_file_from_path(path)
+        if file is None:
+            raise FuseOSError(ENOENT)
+
+        attrs = dict(
+            st_nlink=1,
+            st_ctime=time(),
+            st_mtime=time(), # TODO fix times
+            st_atime=time())
+        
+        if file.is_directory:
+            attrs["st_mode"] = S_IFDIR
+        else:
+            attrs["st_mode"] = S_IFREG
+            
+        if file.size is not None:
+            attrs["st_size"] = file.size
+        else:
+            #print("unknown size")
+            attrs["st_size"] = 0
+        
+        return attrs
