@@ -3,6 +3,7 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 
 import os, sys
+import logging
 from time import time
 
 # was originally named fuse.py until i realized it conflicted with fusepy
@@ -62,6 +63,8 @@ def _file_view_repr(node):
 class PartView(Operations):
     def __init__(self, part):
         self.part = part
+        self.fd = 0
+        self.files = {}
                 
     def get_file_from_path(self, path):
         spath = split_all_path(path)
@@ -101,3 +104,52 @@ class PartView(Operations):
             attrs["st_size"] = 0
         
         return attrs
+    
+    
+    # TODO partial file reads?
+    def open(self, path, flags):
+        file = self.get_file_from_path(path)
+        if file is None:
+            raise FuseOSError(ENOENT)
+            
+        try:
+            content = file.get_content(self.part)
+        except NotImplementedError:
+            logging.error(u'Restore of #%s is not supported', file.index)
+            raise FuseOSError(EIO)
+        
+        
+        if file.is_directory and content is not None:
+            logging.warning(u'Directory %s has data content!', file.file_path)
+
+        binarray = bytearray()
+        if content is not None:
+            logging.info(u'Restoring #%s %s', file.index, path)
+            if hasattr(content, '__iter__'):
+                for piece in content:
+                    binarray.extend(piece)
+            else:
+                binarray.extend(content)
+        """else:
+            if not is_directory:
+                # Empty file
+                pass
+            else:
+                raise FuseOSError(EIO)"""
+
+        binout = bytes(binarray)
+        print(type(binout))
+        
+        self.fd += 1
+        self.files[self.fd] = (file, binout)
+        return self.fd
+        
+    def release(self, path, fh):
+        self.files[fh] = None
+        return 0
+    
+    def read(self, path, size, offset, fh):
+        content = self.files[fh][1]
+        if content is None:
+            raise FuseOSError(EIO)
+        return content[offset:offset+size]
