@@ -106,6 +106,9 @@ class PartView(Operations):
         else:
             #print("unknown size")
             attrs["st_size"] = 0
+        
+        #TODO grab actual info?
+        attrs["st_blocks"] = (attrs["st_size"] + (attrs["st_blksize"] - 1)) // attrs["st_blksize"]
             
         mac = file.get_mac()
         if mac is not None:
