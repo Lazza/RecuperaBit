@@ -29,9 +29,14 @@ import os.path
 import pickle
 import sys
 
+from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
+
+from recuperabit.ifuse import PartView
+
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -247,6 +252,18 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
         list_parts(parts, shorthands, lambda x: True)
     elif cmd == 'quit':
         exit(0)
+    elif cmd == 'mount':
+        if len(arguments) < 2:
+            print 'Wrong number of parameters!'
+        else:
+            partid = arguments[0]
+            mountpoint = arguments[1]
+            part = check_valid_part(partid, parts, shorthands)
+            if part is not None:
+                try:
+                  fuse = FUSE(PartView(part), mountpoint, nothreads=True, foreground=True)
+                except Exception, e:
+                  print e
     else:
         print('Unknown command.')
 
