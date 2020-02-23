@@ -6,7 +6,8 @@ import os, sys
 import logging
 from fs.constants import max_sectors, sector_size
 import time
-import datetime
+from datetime import datetime
+from fs.core_types import File
 
 # was originally named fuse.py until i realized it conflicted with fusepy
 
@@ -35,7 +36,10 @@ def recurse_path(spath, node):
     return None
     
 def date2utc(dt):
-    return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
+    if dt is None:
+        #logging.error("dt is None!")
+        return time.time()
+    return (dt - datetime(1970, 1, 1)).total_seconds()
     
 
 # TODO make this more fitting....
@@ -65,16 +69,15 @@ def _file_view_repr(node):
     )"""
     return node.name
 
-class PartView(Operations):
-    def __init__(self, part):
-        self.part = part
+class AbstractView(Operations):
+    def __init__(self):
         self.fd = 0
         self.files = {}
-                
+        
+    def get_part_from_path(self, path):
+        raise NotImplementedError
     def get_file_from_path(self, path):
-        spath = split_all_path(path)
-        # todo include lost files as well
-        return recurse_path(spath, self.part.root)
+        raise NotImplementedError
     
     def readdir(self, path, offset):
         file = self.get_file_from_path(path)
@@ -111,6 +114,8 @@ class PartView(Operations):
         attrs["st_blocks"] = (attrs["st_size"] + (attrs["st_blksize"] - 1)) // attrs["st_blksize"]
             
         mac = file.get_mac()
+        #print(path)
+        #print(mac)
         if mac is not None:
             attrs["st_mtime"] = date2utc(mac[0])
             attrs["st_atime"] = date2utc(mac[1])
@@ -119,6 +124,7 @@ class PartView(Operations):
             attrs["st_mtime"] = time.time()
             attrs["st_atime"] = time.time()
             attrs["st_ctime"] = time.time()
+            #logging.error("No Time!")
         
         return attrs
     
@@ -128,9 +134,10 @@ class PartView(Operations):
         file = self.get_file_from_path(path)
         if file is None:
             raise FuseOSError(ENOENT)
+        part = self.get_part_from_path(path)
             
         try:
-            content = file.get_content(self.part)
+            content = file.get_content(part)
         except NotImplementedError:
             logging.error(u'Restore of #%s is not supported', file.index)
             raise FuseOSError(EIO)
@@ -155,7 +162,7 @@ class PartView(Operations):
                 raise FuseOSError(EIO)"""
 
         binout = bytes(binarray)
-        print(type(binout))
+        #print(type(binout))
         
         self.fd += 1
         self.files[self.fd] = (file, binout)
@@ -170,3 +177,53 @@ class PartView(Operations):
         if content is None:
             raise FuseOSError(EIO)
         return content[offset:offset+size]
+        
+class PartView(AbstractView):
+    def __init__(self, part, root):
+        AbstractView.__init__(self)
+        self.part = part
+        self.root = root
+    
+    def get_part_from_path(self, path):
+        return self.part
+    def get_file_from_path(self, path):
+        spath = split_all_path(path)
+        return recurse_path(spath, self.root)
+
+
+class MultiPartView(AbstractView):
+    def __init__(self, parts, shorthands, rebuilt):
+        AbstractView.__init__(self)
+        self.partdict = {}
+        self.root = File(0, "ROOT", 0, True)
+        #self.root.set_mac(datetime.now(), datetime.now(), datetime.now())
+        self.build_tree(parts, shorthands, rebuilt)
+        
+    def build_tree(self, parts, shorthands, rebuilt):
+        for i in xrange(len(shorthands)):
+            i, par = shorthands[i]
+            part = parts[par]
+            if par not in rebuilt:
+                print 'Rebuilding partition...'
+                part.rebuild()
+                rebuilt.add(par)
+                print 'Done'
+            partname = 'Partition ' + str(i)
+            file = File(0, partname, 0, True)
+            #file.set_mac(datetime.now(), datetime.now(), datetime.now())
+            
+            file.add_child(part.root)
+            file.add_child(part.lost)
+            self.root.add_child(file)
+            
+            self.partdict[partname] = part
+        
+    
+    def get_part_from_path(self, path):
+        spath = split_all_path(path)
+        return self.partdict[spath[1]]
+        
+    def get_file_from_path(self, path):
+        spath = split_all_path(path)
+        # todo include lost files as well?
+        return recurse_path(spath, self.root)
