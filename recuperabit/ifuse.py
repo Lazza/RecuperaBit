@@ -4,7 +4,9 @@ from stat import S_IFDIR, S_IFLNK, S_IFREG
 
 import os, sys
 import logging
-from time import time
+from fs.constants import max_sectors, sector_size
+import time
+import datetime
 
 # was originally named fuse.py until i realized it conflicted with fusepy
 
@@ -31,6 +33,9 @@ def recurse_path(spath, node):
             if entry.name == spath[1]:
                 return recurse_path(spath[1:], entry)
     return None
+    
+def date2utc(dt):
+    return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
     
 
 # TODO make this more fitting....
@@ -88,9 +93,8 @@ class PartView(Operations):
 
         attrs = dict(
             st_nlink=1,
-            st_ctime=time(),
-            st_mtime=time(), # TODO fix times
-            st_atime=time())
+            st_blksize=sector_size
+            )
         
         if file.is_directory:
             attrs["st_mode"] = S_IFDIR
@@ -102,6 +106,16 @@ class PartView(Operations):
         else:
             #print("unknown size")
             attrs["st_size"] = 0
+            
+        mac = file.get_mac()
+        if mac is not None:
+            attrs["st_mtime"] = date2utc(mac[0])
+            attrs["st_atime"] = date2utc(mac[1])
+            attrs["st_ctime"] = date2utc(mac[2])
+        else:
+            attrs["st_mtime"] = time.time()
+            attrs["st_atime"] = time.time()
+            attrs["st_ctime"] = time.time()
         
         return attrs
     
