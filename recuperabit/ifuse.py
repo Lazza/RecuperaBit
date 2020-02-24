@@ -8,6 +8,7 @@ from fs.constants import max_sectors, sector_size
 import time
 from datetime import datetime
 from fs.core_types import File
+import traceback
 
 # was originally named fuse.py until i realized it conflicted with fusepy
 
@@ -137,35 +138,15 @@ class AbstractView(Operations):
         part = self.get_part_from_path(path)
             
         try:
-            content = file.get_content(part)
-        except NotImplementedError:
-            logging.error(u'Restore of #%s is not supported', file.index)
+            file.open(part)
+        except Exception, e:
+            track = traceback.format_exc()
+            logging.error(e)
+            logging.error(track)
             raise FuseOSError(EIO)
         
-        
-        if file.is_directory and content is not None:
-            logging.warning(u'Directory %s has data content!', file.file_path)
-
-        binarray = bytearray()
-        if content is not None:
-            logging.info(u'Restoring #%s %s', file.index, path)
-            if hasattr(content, '__iter__'):
-                for piece in content:
-                    binarray.extend(piece)
-            else:
-                binarray.extend(content)
-        """else:
-            if not is_directory:
-                # Empty file
-                pass
-            else:
-                raise FuseOSError(EIO)"""
-
-        binout = bytes(binarray)
-        #print(type(binout))
-        
         self.fd += 1
-        self.files[self.fd] = (file, binout)
+        self.files[self.fd] = file
         return self.fd
         
     def release(self, path, fh):
@@ -173,10 +154,15 @@ class AbstractView(Operations):
         return 0
     
     def read(self, path, size, offset, fh):
-        content = self.files[fh][1]
-        if content is None:
+        file = self.get_file_from_path(path)
+        part = self.get_part_from_path(path)
+        try:
+            return file.read(part, offset, size)
+        except Exception, e:
+            track = traceback.format_exc()
+            logging.error(e)
+            logging.error(track)
             raise FuseOSError(EIO)
-        return content[offset:offset+size]
         
 class PartView(AbstractView):
     def __init__(self, part, root):

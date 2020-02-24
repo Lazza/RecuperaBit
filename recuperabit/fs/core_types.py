@@ -50,6 +50,7 @@ class File(object):
         self.children = set()
         self.children_names = set()     # Avoid name clashes breaking restore
         self.offset = None  # Offset from beginning of disk
+        self.isopen = False # if the file is currently open
 
     def set_parent(self, parent):
         """Set a pointer to the parent directory."""
@@ -106,6 +107,13 @@ class File(object):
         plug-in for a specific file system."""
         if self.is_directory or self.is_ghost:
             return None
+        raise NotImplementedError
+    
+    def open(self, partition):
+        raise NotImplementedError
+    def close(self, partition):
+        pass
+    def read(self, partition, offset, size):
         raise NotImplementedError
 
     # pylint: disable=R0201
