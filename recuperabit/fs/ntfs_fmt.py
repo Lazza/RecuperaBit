@@ -43,8 +43,7 @@ def printable_name(name):
 def windows_time(timestamp):
     """Convert a date-time value from Microsoft filetime to UTC."""
     try:
-        encoded = str(timestamp[::-1]).encode('hex')
-        value = int(encoded, 16)  # 'i' in unpack
+        value = int.from_bytes(timestamp, byteorder='little', signed=False)
         converted = datetime.utcfromtimestamp(value/10.**7 - 11644473600)
         return converted
     except ValueError:

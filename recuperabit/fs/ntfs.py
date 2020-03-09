@@ -267,7 +267,7 @@ class NTFSFile(File):
         index = parsed['record_n']
         ads_suffix = ':' + ads if ads != '' else ads
         if ads != '':
-            index = unicode(index) + ads_suffix
+            index = str(index) + ads_suffix
         attrs = parsed['attributes']
         filenames = attrs['$FILE_NAME']
         datas = attrs.get('$DATA', [])
@@ -282,7 +282,7 @@ class NTFSFile(File):
                 break
 
         filtered = [
-            f for f in filenames if f.has_key('content') and
+            f for f in filenames if 'content' in f and
             f['content'] is not None and
             f['content']['name_length'] > 0 and
             f['content']['name'] is not None
@@ -368,7 +368,7 @@ class NTFSFile(File):
                     partial = self._padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
-                    yield str(partial)
+                    yield bytes(partial)
             vcn = attr['end_VCN'] + 1
 
     def get_content(self, partition):
@@ -415,7 +415,7 @@ class NTFSFile(File):
             start = single['dump_offset'] + single['content_off']
             end = start + single['content_size']
             content = dump[start:end]
-            return str(content)
+            return bytes(content)
         else:
             if partition.sec_per_clus is None:
                 logging.error(u'Cannot restore non-resident $DATA '
@@ -472,17 +472,17 @@ class NTFSScanner(DiskScanner):
     def feed(self, index, sector):
         """Feed a new sector."""
         # check boot sector
-        if str(sector).endswith('\x55\xAA') and 'NTFS' in sector[:8]:
+        if sector.endswith(b'\x55\xAA') and b'NTFS' in sector[:8]:
             self.found_boot.append(index)
             return 'NTFS boot sector'
 
         # check file record
-        if str(sector).startswith(('FILE', 'BAAD')):
+        if sector.startswith((b'FILE', b'BAAD')):
             self.found_file.add(index)
             return 'NTFS file record'
 
         # check index record
-        if str(sector).startswith('INDX'):
+        if sector.startswith(b'INDX'):
             self.found_indx.add(index)
             return 'NTFS index record'
 
@@ -525,7 +525,7 @@ class NTFSScanner(DiskScanner):
         """Determine the starting sector of a partition with INDX records."""
         nodes = (
             self.parsed_file_review[node.offset]
-            for node in part.files.itervalues()
+            for node in iter(part.files.values())
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
@@ -665,7 +665,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding extra attributes from $ATTRIBUTE_LIST')
         # Select elements with many attributes
         many_attributes_it = (
-            node for node in list(part.files.itervalues())
+            node for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$ATTRIBUTE_LIST' in
             self.parsed_file_review[node.offset]['attributes']
@@ -677,7 +677,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding ghost entries from $INDEX_ALLOCATION')
         # Select only elements with $INDEX_ALLOCATION
         allocation_it = (
-            node for node in list(part.files.itervalues())
+            node for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']

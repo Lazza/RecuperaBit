@@ -94,9 +94,9 @@ class File(object):
         """Return the full path of this file."""
         if self.parent is not None:
             parent = part[self.parent]
-            return os.path.join(parent.full_path(part), unicode(self.name))
+            return os.path.join(parent.full_path(part), self.name)
         else:
-            return unicode(self.name)
+            return self.name
 
     def get_content(self, partition):
         # pylint: disable=W0613

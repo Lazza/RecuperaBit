@@ -370,10 +370,9 @@ def main():
     logging.info('%i partitions found.', len(parts))
     while True:
         print('\nWrite command ("help" for details):')
-        print('>')
         try:
-            command = input().strip().split(' ')
-        except EOFError:
+            command = input('> ').split(' ')
+        except (EOFError, KeyboardInterrupt):
             print('')
             exit(0)
         cmd = command[0]

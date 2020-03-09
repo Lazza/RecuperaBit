@@ -25,6 +25,7 @@ import logging
 import os
 import os.path
 import sys
+import types
 
 from .utils import tiny_repr
 
@@ -59,7 +60,7 @@ class SparseList(object):
             self.elements[index] = item
 
     def __contains__(self, element):
-        return element in self.elements.itervalues()
+        return element in self.elements.values()
 
     def __iter__(self):
         return self.keys.__iter__()
@@ -205,7 +206,7 @@ def makedirs(path):
 
 def recursive_restore(node, part, outputdir, make_dirs=True):
     """Restore a directory structure starting from a file node."""
-    parent_path = unicode(
+    parent_path = str(
         part[node.parent].full_path(part) if node.parent is not None
         else ''
     )
@@ -240,7 +241,7 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
         if content is not None:
             logging.info(u'Restoring #%s %s', node.index, file_path)
             with codecs.open(restore_path, 'wb') as outfile:
-                if hasattr(content, '__iter__'):
+                if isinstance(content, types.GeneratorType):
                     for piece in content:
                         outfile.write(piece)
                 else:
