@@ -5,7 +5,7 @@ the Recuperabit meta file system. Each plug-in is supposed to extend the File
 and DiskScanner classes with subclasses implementing the missing methods."""
 
 # RecuperaBit
-# Copyright 2014-2017 Andrea Lazzarotto
+# Copyright 2014-2021 Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
