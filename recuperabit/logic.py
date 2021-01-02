@@ -37,7 +37,7 @@ class SparseList(object):
         self.elements = {}
         self.default = default
         if data is not None:
-            self.keys = sorted(iter(data))
+            self.keys = sorted(data)
             self.elements.update(data)
 
     def __len__(self):

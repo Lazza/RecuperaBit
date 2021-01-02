@@ -525,7 +525,7 @@ class NTFSScanner(DiskScanner):
         """Determine the starting sector of a partition with INDX records."""
         nodes = (
             self.parsed_file_review[node.offset]
-            for node in iter(part.files.values())
+            for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
