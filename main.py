@@ -41,14 +41,14 @@ __maintainer__ = "Andrea Lazzarotto"
 __email__ = "andrea.lazzarotto@gmail.com"
 
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
+#reload(sys)
+#sys.setdefaultencoding('utf-8')
 
 """Wrapping sys.stdout into an instance of StreamWriter will allow writing
 unicode data with sys.stdout.write() and print.
 https://wiki.python.org/moin/PrintFails"""
-sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
-sys.stderr = codecs.getwriter(locale.getpreferredencoding())(sys.stderr)
+#sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
+#sys.stderr = codecs.getwriter(locale.getpreferredencoding())(sys.stderr)
 
 # classes of available scanners
 plugins = (
@@ -78,7 +78,7 @@ def list_parts(parts, shorthands, test):
     """List partitions corresponding to test."""
     for i, part in shorthands:
         if test(parts[part]):
-            print 'Partition #' + str(i), '->', parts[part]
+            print('Partition #' + str(i), '->', parts[part])
 
 
 def check_valid_part(num, parts, shorthands, rebuild=True):
@@ -86,40 +86,40 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     try:
         i = int(num)
     except ValueError:
-        print 'Value is not valid!'
+        print('Value is not valid!')
         return None
-    if i in xrange(len(shorthands)):
+    if i in range(len(shorthands)):
         i, par = shorthands[i]
         part = parts[par]
         if rebuild and par not in rebuilt:
-            print 'Rebuilding partition...'
+            print('Rebuilding partition...')
             part.rebuild()
             rebuilt.add(par)
-            print 'Done'
+            print('Done')
         return part
-    print 'No partition with given ID!'
+    print('No partition with given ID!')
     return None
 
 
 def interpret(cmd, arguments, parts, shorthands, outdir):
     """Perform command required by user."""
     if cmd == 'help':
-        print 'Available commands:'
+        print('Available commands:')
         for name, desc in commands:
-            print '    %s%s' % (name.ljust(28), desc)
+            print('    %s%s' % (name.ljust(28), desc))
     elif cmd == 'tree':
         if len(arguments) != 1:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
-                print '-'*10
-                print utils.tree_folder(part.root)
-                print utils.tree_folder(part.lost)
-                print '-'*10
+                print('-'*10)
+                print(utils.tree_folder(part.root))
+                print(utils.tree_folder(part.lost))
+                print('-'*10)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
@@ -133,12 +133,12 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 try:
                     with codecs.open(fname, 'w', encoding='utf8') as outfile:
                         outfile.write('\n'.join(contents))
-                        print 'Saved body file to %s' % fname
+                        print('Saved body file to %s' % fname)
                 except IOError:
-                    print 'Cannot open file %s for output!' % fname
+                    print('Cannot open file %s for output!' % fname)
     elif cmd == 'csv':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
@@ -149,12 +149,12 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                         outfile.write(
                             '\n'.join(contents)
                         )
-                        print 'Saved CSV file to %s' % fname
+                        print('Saved CSV file to %s' % fname)
                 except IOError:
-                    print 'Cannot open file %s for output!' % fname
+                    print('Cannot open file %s for output!' % fname)
     elif cmd == 'tikzplot':
         if len(arguments) not in (1, 2):
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
@@ -163,14 +163,14 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                     try:
                         with codecs.open(fname, 'w') as outfile:
                             outfile.write(utils.tikz_part(part) + '\n')
-                            print 'Saved Tikz code to %s' % fname
+                            print('Saved Tikz code to %s' % fname)
                     except IOError:
-                        print 'Cannot open file %s for output!' % fname
+                        print('Cannot open file %s for output!' % fname)
                 else:
-                    print utils.tikz_part(part)
+                    print(utils.tikz_part(part))
     elif cmd == 'restore':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             partid = arguments[0]
             part = check_valid_part(partid, parts, shorthands)
@@ -185,12 +185,12 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 for i in [index, indexi]:
                     myfile = part.get(i, myfile)
                 if myfile is None:
-                    print 'The index is not valid'
+                    print('The index is not valid')
                 else:
                     logic.recursive_restore(myfile, part, partition_dir)
     elif cmd == 'locate':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
@@ -201,10 +201,10 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                         ' [GHOST]' if node.is_ghost else
                         ' [DELETED]' if node.is_deleted else ''
                     )
-                    print "[%s]: %s%s" % (node.index, path, desc)
+                    print('[%s]: %s%s' % (node.index, path, desc))
     elif cmd == 'traceback':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             partid = arguments[0]
             part = check_valid_part(partid, parts, shorthands)
@@ -218,23 +218,23 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 for i in [index, indexi]:
                     myfile = part.get(i, myfile)
                 if myfile is None:
-                    print 'The index is not valid'
+                    print('The index is not valid')
                 else:
                     while myfile is not None:
-                        print "[{}] {}".format(myfile.index, myfile.full_path(part))
+                        print('[{}] {}'.format(myfile.index, myfile.full_path(part)))
                         myfile = part.get(myfile.parent)
     elif cmd == 'merge':
         if len(arguments) != 2:
-            print 'Wrong number of parameters!'
+            print('Wrong number of parameters!')
         else:
             part1 = check_valid_part(arguments[0], parts, shorthands, rebuild=False)
             part2 = check_valid_part(arguments[1], parts, shorthands, rebuild=False)
             if None in (part1, part2):
                 return
             if part1.fs_type != part2.fs_type:
-                print 'Cannot merge partitions with types (%s, %s)' % (part1.fs_type, part2.fs_type)
+                print('Cannot merge partitions with types (%s, %s)' % (part1.fs_type, part2.fs_type))
                 return
-            print 'Merging partitions...'
+            print('Merging partitions...')
             utils.merge(part1, part2)
             source_position = int(arguments[1])
             destination_position = int(arguments[0])
@@ -247,7 +247,7 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                     rebuilt.remove(par)
                 except:
                     pass
-            print 'There are now %d partitions.' % (len(parts), )
+            print('There are now %d partitions.' % (len(parts), ))
     elif cmd == 'recoverable':
         list_parts(parts, shorthands, lambda x: x.recoverable)
     elif cmd == 'other':
@@ -257,21 +257,21 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
     elif cmd == 'quit':
         exit(0)
     else:
-        print 'Unknown command.'
+        print('Unknown command.')
 
 
 def main():
     """Wrap the program logic inside a function."""
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-    print "     ___                                ___ _ _   "
-    print "    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ "
-    print "    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|"
-    print "    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|"
-    print "                    |_|   v{}".format(__version__)
-    print '   ', __copyright__, '<%s>' % __email__
-    print '    Released under the', __license__
-    print ''
+    print("     ___                                ___ _ _   ")
+    print("    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ ")
+    print("    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|")
+    print("    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|")
+    print("                    |_|   v{}".format(__version__))
+    print('   ', __copyright__, '<%s>' % __email__)
+    print('    Released under the', __license__)
+    print('')
 
     parser = argparse.ArgumentParser(
         description='Reconstruct the directory structure of possibly damaged '
@@ -335,10 +335,10 @@ def main():
 
     # Ask for confirmation before beginning the process
     try:
-        confirm = raw_input('Type [Enter] to start the analysis or '
+        confirm = input('Type [Enter] to start the analysis or '
                             '"exit" / "quit" / "q" to quit: ')
     except EOFError:
-        print ''
+        print('')
         exit(0)
     if confirm in ('exit', 'quit', 'q'):
         exit(0)
@@ -369,12 +369,11 @@ def main():
 
     logging.info('%i partitions found.', len(parts))
     while True:
-        print '\nWrite command ("help" for details):'
-        print '>',
+        print('\nWrite command ("help" for details):')
         try:
-            command = raw_input().strip().split(' ')
-        except EOFError:
-            print ''
+            command = input('> ').split(' ')
+        except (EOFError, KeyboardInterrupt):
+            print('')
             exit(0)
         cmd = command[0]
         arguments = command[1:]

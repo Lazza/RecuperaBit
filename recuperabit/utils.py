@@ -26,10 +26,10 @@ import sys
 import time
 import unicodedata
 
-from fs.constants import sector_size
+from .fs.constants import sector_size
 
 printer = pprint.PrettyPrinter(indent=4)
-all_chars = (unichr(i) for i in xrange(sys.maxunicode))
+all_chars = (chr(i) for i in range(sys.maxunicode))
 unicode_printable = set(
     c for c in all_chars
     if not unicodedata.category(c)[0].startswith('C')
@@ -60,18 +60,6 @@ def sectors(image, offset, size, bsize=sector_size, fill=True):
             return None
     return bytearray(dump)
 
-
-def signedbytes(data):
-    """Convert a bytearray into an integer, considering the first bit as
-    sign. The data must be Big-endian."""
-    if data[0] & 0x80:
-        inverted = bytearray(~d % 256 for d in data)
-        return -signedbytes(inverted) - 1
-
-    encoded = str(data).encode('hex')
-    return int(encoded, 16)
-
-
 def unixtime(dtime):
     """Convert datetime to UNIX epoch."""
     if dtime is None:
@@ -82,6 +70,8 @@ def unixtime(dtime):
         return 0
 
 
+# format:
+# [(label, (formatter, lower, higher)), ...]
 def unpack(data, fmt):
     """Extract formatted information from a string of bytes."""
     result = {}
@@ -105,14 +95,18 @@ def unpack(data, fmt):
             if formatter.endswith('i') and len(formatter) < 4:
                 # Use little-endian by default. Big-endian with >i.
                 # Force sign-extension of first bit with >+i / +i.
-                step = 1 if formatter.startswith('>') else -1
                 chunk = data[low:high+1]
+
+                signed = False
+                if '+' in formatter:
+                    signed = True
+
+                byteorder = 'little'
+                if formatter.startswith('>'):
+                    byteorder = 'big'
+
                 if len(chunk):
-                    if '+' in formatter:
-                        result[label] = signedbytes(chunk[::step])
-                    else:
-                        encoded = str(chunk[::step]).encode('hex')
-                        result[label] = int(encoded, 16)
+                    result[label] = int.from_bytes(chunk, byteorder=byteorder, signed=signed)
                 else:
                     result[label] = None
     return result
@@ -140,20 +134,6 @@ def printable(text, default='.', alphabet=None):
         alphabet = unicode_printable
     return ''.join((i if i in alphabet else default) for i in text)
 
-
-def hexdump(stream, count=16):
-    """Return a nice hexadecimal dump representation of stream."""
-    stream = str(stream)
-    encoded = stream.encode('hex')
-    chunks = [encoded[i:i+2] for i in xrange(0, len(encoded), 2)]
-    lines = (
-        u'%08d: ' % i + ' '.join(chunks[i:i+count]) + ' | ' +
-        printable(stream[i:i+count], alphabet=ascii_printable)
-        for i in xrange(0, len(chunks), count)
-    )
-    return '\n'.join(lines)
-
-
 def pretty(dictionary):
     """Format dictionary with the pretty printer."""
     return printer.pformat(dictionary)
@@ -165,7 +145,7 @@ def show(dictionary):
 
 
 def tiny_repr(element):
-    """Return a representation of unicode strings without the u."""
+    """deprecated: Return a representation of unicode strings without the u."""
     rep = repr(element)
     return rep[1:] if type(element) == unicode else rep
 
@@ -230,7 +210,7 @@ def tree_folder(directory, padding=0):
 def _bodyfile_repr(node, path):
     """Return a body file line for node."""
     end = '/' if node.is_directory or len(node.children) else ''
-    return '|'.join(unicode(el) for el in [
+    return '|'.join(str(el) for el in [
         '0',                        # MD5
         path + node.name + end,     # name
         node.index,                 # inode
@@ -285,7 +265,7 @@ def tikz_child(directory, padding=0):
         lines.append(content)
         count += number
     lines.append('}')
-    for entry in xrange(count):
+    for entry in range(count):
         lines.append('child [missing] {}')
     return '\n'.join(lines).replace('\n}', '}'), count
 
