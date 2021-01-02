@@ -4,7 +4,7 @@ This plug-in contains the necessary logic to parse traces of NTFS file systems,
 including MFT entries and directory indexes."""
 
 # RecuperaBit
-# Copyright 2014-2017 Andrea Lazzarotto
+# Copyright 2014-2021 Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -25,9 +25,9 @@ including MFT entries and directory indexes."""
 import logging
 from collections import Counter
 
-from constants import max_sectors, sector_size
-from core_types import DiskScanner, File, Partition
-from ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
+from .constants import max_sectors, sector_size
+from .core_types import DiskScanner, File, Partition
+from .ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
                       attr_resident_fmt, attr_types_fmt, attribute_list_parser,
                       boot_sector_fmt, entry_fmt, indx_dir_entry_fmt, indx_fmt,
                       indx_header_fmt)
@@ -97,7 +97,7 @@ def parse_mft_attr(attr):
 def _apply_fixup_values(header, entry):
     """Apply the fixup values to FILE and INDX records."""
     offset = header['off_fixup']
-    for i in xrange(1, header['n_entries']):
+    for i in range(1, header['n_entries']):
         pos = sector_size * i
         entry[pos-2:pos] = entry[offset + 2*i:offset + 2*(i+1)]
 
@@ -267,7 +267,7 @@ class NTFSFile(File):
         index = parsed['record_n']
         ads_suffix = ':' + ads if ads != '' else ads
         if ads != '':
-            index = unicode(index) + ads_suffix
+            index = str(index) + ads_suffix
         attrs = parsed['attributes']
         filenames = attrs['$FILE_NAME']
         datas = attrs.get('$DATA', [])
@@ -282,7 +282,7 @@ class NTFSFile(File):
                 break
 
         filtered = [
-            f for f in filenames if f.has_key('content') and
+            f for f in filenames if 'content' in f and
             f['content'] is not None and
             f['content']['name_length'] > 0 and
             f['content']['name'] is not None
@@ -368,7 +368,7 @@ class NTFSFile(File):
                     partial = self._padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
-                    yield str(partial)
+                    yield bytes(partial)
             vcn = attr['end_VCN'] + 1
 
     def get_content(self, partition):
@@ -415,7 +415,7 @@ class NTFSFile(File):
             start = single['dump_offset'] + single['content_off']
             end = start + single['content_size']
             content = dump[start:end]
-            return str(content)
+            return bytes(content)
         else:
             if partition.sec_per_clus is None:
                 logging.error(u'Cannot restore non-resident $DATA '
@@ -472,17 +472,17 @@ class NTFSScanner(DiskScanner):
     def feed(self, index, sector):
         """Feed a new sector."""
         # check boot sector
-        if sector.endswith('\x55\xAA') and 'NTFS' in sector[:8]:
+        if sector.endswith(b'\x55\xAA') and b'NTFS' in sector[:8]:
             self.found_boot.append(index)
             return 'NTFS boot sector'
 
         # check file record
-        if sector.startswith(('FILE', 'BAAD')):
+        if sector.startswith((b'FILE', b'BAAD')):
             self.found_file.add(index)
             return 'NTFS file record'
 
         # check index record
-        if sector.startswith('INDX'):
+        if sector.startswith(b'INDX'):
             self.found_indx.add(index)
             return 'NTFS index record'
 
@@ -518,14 +518,14 @@ class NTFSScanner(DiskScanner):
         to speed up the search."""
         counter = Counter()
         counter.update(self.found_spc)
-        counter.update(2**i for i in xrange(8))
+        counter.update(2**i for i in range(8))
         return [i for i, _ in counter.most_common()]
 
     def find_boundary(self, part, mft_address, multipliers):
         """Determine the starting sector of a partition with INDX records."""
         nodes = (
             self.parsed_file_review[node.offset]
-            for node in part.files.itervalues()
+            for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
@@ -643,7 +643,7 @@ class NTFSScanner(DiskScanner):
         if mirrpos is None:
             return
 
-        for i in xrange(4):
+        for i in range(4):
             node = part.get(i)
             if node is None or node.is_ghost:
                 position = mirrpos + i * FILE_size
@@ -665,7 +665,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding extra attributes from $ATTRIBUTE_LIST')
         # Select elements with many attributes
         many_attributes_it = (
-            node for node in list(part.files.itervalues())
+            node for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$ATTRIBUTE_LIST' in
             self.parsed_file_review[node.offset]['attributes']
@@ -677,7 +677,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding ghost entries from $INDEX_ALLOCATION')
         # Select only elements with $INDEX_ALLOCATION
         allocation_it = (
-            node for node in list(part.files.itervalues())
+            node for node in part.files.values()
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
