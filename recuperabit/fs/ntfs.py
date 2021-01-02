@@ -328,15 +328,12 @@ class NTFSFile(File):
         for attr in datas:
             diff = attr['start_VCN'] - vcn
             if diff > 0:
+                # We do not try to fill with zeroes as this might produce huge useless files
                 logging.warning(
-                    u'Missing part for {}, filling {} clusters '
-                    'with zeros'.format(self, diff)
+                    u'Missing part for {}, {} clusters skipped'.format(self, diff)
                 )
-            while diff > 0:
-                amount = min(max_sectors//spc, diff)
-                vcn += amount
-                diff -= amount
-                yield '\x00' * sector_size * spc * amount
+                vcn += diff
+                yield ''
 
             clusters_pos = 0
             size = attr['real_size']
