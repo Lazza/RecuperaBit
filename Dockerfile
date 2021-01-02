@@ -10,7 +10,7 @@ RUN \
  apt-get update && \
  
  apt-get install -y \
-  pypy \
+  pypy3 \
   git \
   locales && \
 
@@ -26,7 +26,9 @@ RUN \
 
 RUN \
  # installing recuperabit
- git clone https://github.com/Lazza/RecuperaBit.git recuperabit
+ git clone https://github.com/Lazza/RecuperaBit.git recuperabit && \
+ /usr/bin/pypy3 /recuperabit/main.py -h >/dev/null 2>&1 && \
+ echo "build successful" || exit 1
 
 RUN \
  # create placeholder files
@@ -37,5 +39,5 @@ ENV PYTHONIOENCODING utf-8
 ENV LANG='en_US.UTF-8'
 ENV LC_ALL='en_US.UTF-8'
 
-ENTRYPOINT ["/usr/bin/pypy", "/recuperabit/main.py"]
+ENTRYPOINT ["/usr/bin/pypy3", "/recuperabit/main.py"]
 CMD ["-s", "/save.file", "-o", "/output", "/drive.img"]
