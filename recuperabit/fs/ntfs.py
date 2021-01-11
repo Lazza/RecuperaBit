@@ -235,7 +235,7 @@ def _integrate_attribute_list(parsed, part, image):
         files = entries_by_type[num]
         if (
             len(files) == 0 or
-            (len(files) == 1 and iter(files).next() == base_record)
+            (len(files) == 1 and next(iter(files)) == base_record)
         ):
             del entries_by_type[num]
 
