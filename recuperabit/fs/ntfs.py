@@ -136,7 +136,8 @@ def _attributes_reader(entry, offset):
 def parse_file_record(entry):
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
-    if (header['size_alloc'] > len(entry) or
+    if (header['size_alloc'] is None or
+            header['size_alloc'] > len(entry) or
             len(entry) < FILE_size*sector_size):
         header['valid'] = False
         return header
