@@ -334,7 +334,7 @@ class NTFSFile(File):
                     u'Missing part for {}, {} clusters skipped'.format(self, diff)
                 )
                 vcn += diff
-                yield ''
+                yield b''
 
             clusters_pos = 0
             size = attr['real_size']
@@ -353,7 +353,7 @@ class NTFSFile(File):
                     while length > 0:
                         amount = min(max_sectors*sector_size, length)
                         length -= amount
-                        yield '\x00' * amount
+                        yield b'\x00' * amount
                     continue
                 # Normal runlists
                 clusters_pos += entry['offset']
