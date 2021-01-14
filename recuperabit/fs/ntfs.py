@@ -663,7 +663,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding extra attributes from $ATTRIBUTE_LIST')
         # Select elements with many attributes
         many_attributes_it = (
-            node for node in part.files.values()
+            node for node in list(part.files.values())
             if node.offset in self.parsed_file_review and
             '$ATTRIBUTE_LIST' in
             self.parsed_file_review[node.offset]['attributes']
@@ -675,7 +675,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding ghost entries from $INDEX_ALLOCATION')
         # Select only elements with $INDEX_ALLOCATION
         allocation_it = (
-            node for node in part.files.values()
+            node for node in list(part.files.values())
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
