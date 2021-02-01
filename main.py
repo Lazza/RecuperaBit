@@ -36,7 +36,7 @@ from recuperabit.fs.ntfs import NTFSScanner
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
 __license__ = "GPLv3"
-__version__ = "1.1.4"
+__version__ = "1.1.5-dev"
 __maintainer__ = "Andrea Lazzarotto"
 __email__ = "andrea.lazzarotto@gmail.com"
 
