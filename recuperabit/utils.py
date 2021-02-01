@@ -58,7 +58,7 @@ def sectors(image, offset, size, bsize=sector_size, fill=True):
             dump = size * bsize * b'\x00'
         else:
             return None
-    return dump
+    return bytearray(dump)
 
 def unixtime(dtime):
     """Convert datetime to UNIX epoch."""
