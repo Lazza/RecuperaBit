@@ -58,14 +58,17 @@ are exported in the directory specified by `-o` (or `recuperabit_output`).
 
 ### Limitation
 
-Currently RecuperaBit does not work with compressed files on an NTFS filesystem. If you have deep knowledge of the inner workings of file compression on NTFS filesystem, your help would be much appreciated, as available documentation is quite sparse on the topic.
+Currently RecuperaBit does not work with compressed files on an NTFS filesystem.
+If you have deep knowledge of the inner workings of file compression on NTFS
+filesystem, your help would be much appreciated, as available documentation is
+quite sparse on the topic.
 
 ### Pypy
 
 RecuperaBit can be run with the standard cPython implementation, however speed
 can be increased by using it with the Pypy interpreter and JIT compiler:
 
-    pypy main.py /path/to/disk.img
+    pypy3 main.py /path/to/disk.img
 
 ### Recovery of File Contents
 
