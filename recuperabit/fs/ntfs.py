@@ -136,7 +136,8 @@ def _attributes_reader(entry, offset):
 def parse_file_record(entry):
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
-    if (header['size_alloc'] > len(entry) or
+    if (header['size_alloc'] is None or
+            header['size_alloc'] > len(entry) or
             len(entry) < FILE_size*sector_size):
         header['valid'] = False
         return header
@@ -235,7 +236,7 @@ def _integrate_attribute_list(parsed, part, image):
         files = entries_by_type[num]
         if (
             len(files) == 0 or
-            (len(files) == 1 and iter(files).next() == base_record)
+            (len(files) == 1 and next(iter(files)) == base_record)
         ):
             del entries_by_type[num]
 
@@ -333,7 +334,7 @@ class NTFSFile(File):
                     u'Missing part for {}, {} clusters skipped'.format(self, diff)
                 )
                 vcn += diff
-                yield ''
+                yield b''
 
             clusters_pos = 0
             size = attr['real_size']
@@ -352,7 +353,7 @@ class NTFSFile(File):
                     while length > 0:
                         amount = min(max_sectors*sector_size, length)
                         length -= amount
-                        yield '\x00' * amount
+                        yield b'\x00' * amount
                     continue
                 # Normal runlists
                 clusters_pos += entry['offset']
@@ -662,7 +663,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding extra attributes from $ATTRIBUTE_LIST')
         # Select elements with many attributes
         many_attributes_it = (
-            node for node in part.files.values()
+            node for node in list(part.files.values())
             if node.offset in self.parsed_file_review and
             '$ATTRIBUTE_LIST' in
             self.parsed_file_review[node.offset]['attributes']
@@ -674,7 +675,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Adding ghost entries from $INDEX_ALLOCATION')
         # Select only elements with $INDEX_ALLOCATION
         allocation_it = (
-            node for node in part.files.values()
+            node for node in list(part.files.values())
             if node.offset in self.parsed_file_review and
             '$INDEX_ALLOCATION' in
             self.parsed_file_review[node.offset]['attributes']
