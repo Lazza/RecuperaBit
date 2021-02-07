@@ -67,42 +67,6 @@ can be increased by using it with the Pypy interpreter and JIT compiler:
 
     pypy main.py /path/to/disk.img
 
-### Docker
-The container is based on debian buster with pypy3
-
-To automatically destroy the container after use run it with "--rm".
-
-    docker run -it --rm h4r0/recuperabit --help
-
-Example for a drive image copy created with dd/ddrescue (**recommended**)
-
-Adjust the paths "/path/to/" to your needs.
-
-    docker run -it --rm \
-    -v "/path/to/drive.img:/drive.img" \
-    -v "/path/to/outputdir/:/output" \
-    -v "/path/to/save.log:/save.log" \
-    h4r0/recuperabit
-
-The arguments "-s, -o" and "path" are passed by default.
-
-If you want to use custom arguments specifiy them after the image name "h4r0/recuperabit".
-
-    docker run -it --rm \
-    -v "/path/to/drive.img:/drive.img" \
-    -v "/path/to/outputdir/:/output" \
-    -v "/path/to/save.log:/save.log" \
-    h4r0/recuperabit -w -o /output /drive.img
-
-Working with raw block devices e.g. /dev/sda
-
-    docker run -it --rm \
-    --device /dev/sda \
-    -v "/path/to/outputdir/:/output" \
-    -v "/path/to/save.log:/save.log" \ 
-    h4r0/recuperabit -s /save.log -o /output /dev/sda
-
-
 ### Recovery of File Contents
 
 Files can be restored one at a time or recursively, starting from a directory.
