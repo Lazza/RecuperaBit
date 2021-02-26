@@ -40,37 +40,17 @@ def recurse_path(spath, node):
     
 def date2utc(dt):
     if dt is None:
-        #logging.error("dt is None!")
         return time.time()
     return (dt - datetime(1970, 1, 1)).total_seconds()
-    
 
-# TODO make this more fitting....
 def _file_view_repr(node):
     """Give the file a name with some metadata about it"""
-    """desc = (
-        '[GHOST]' if node.is_ghost else
-        '[DELETED]' if node.is_deleted else ''
-    )
-
-    #tail = '/' if node.is_directory else ''
-    tail = ''
-    data = [
-        ('Id', node.index),
-        ('Offset', node.offset),
-        (
-            'Offset bytes',
-            node.offset * sector_size
-            if node.offset is not None else None
-        )
-        # ('MAC', node.mac)
-    ]
-    if not node.is_directory:
-        data += [('Size', readable_bytes(node.size))]
-    return u'%s%s (%s) %s' % (
-        node.name, tail, ', '.join(a + ': ' + str(b) for a, b in data), desc
-    )"""
-    return node.name
+    desc = ""
+    if node.is_ghost:
+      desc = desc + '[GHOST]'
+    if node.is_deleted:
+      desc = desc + '[DELETED]'
+    return desc + node.name
 
 class AbstractView(Fuse):
     def __init__(self, *args, **kw):
@@ -110,15 +90,12 @@ class AbstractView(Fuse):
         if file.size is not None:
             attrs.st_size = file.size
         else:
-            #print("unknown size")
             attrs.st_size = 0
         
         #TODO grab actual info?
         attrs.st_blocks = (attrs.st_size + (attrs.st_blksize - 1)) // attrs.st_blksize
             
         mac = file.get_mac()
-        #print(path)
-        #print(mac)
         if mac is not None:
             attrs.st_mtime = date2utc(mac[0])
             attrs.st_atime = date2utc(mac[1])
@@ -127,12 +104,9 @@ class AbstractView(Fuse):
             attrs.st_mtime = time.time()
             attrs.st_atime = time.time()
             attrs.st_ctime = time.time()
-            #logging.error("No Time!")
         
         return attrs
     
-    
-    # TODO partial file reads?
     def open(self, path, mode):
         file = self.get_file_from_path(path)
         if file is None:
@@ -184,7 +158,6 @@ class MultiPartView(AbstractView):
         AbstractView.__init__(self, *args, **kw)
         self.partdict = {}
         self.root = File(0, "ROOT", 0, True)
-        #self.root.set_mac(datetime.now(), datetime.now(), datetime.now())
         self.build_tree(parts, shorthands, rebuilt)
         
     def build_tree(self, parts, shorthands, rebuilt):
@@ -198,13 +171,14 @@ class MultiPartView(AbstractView):
                 print('Done')
             partname = 'Partition ' + str(i)
             file = File(0, partname, 0, True)
-            #file.set_mac(datetime.now(), datetime.now(), datetime.now())
+            file.set_mac(datetime.now(), datetime.now(), datetime.now())
             
             file.add_child(part.root)
             file.add_child(part.lost)
             self.root.add_child(file)
             
             self.partdict[partname] = part
+        self.root.set_mac(datetime.now(), datetime.now(), datetime.now())
         
     
     def get_part_from_path(self, path):
