@@ -31,15 +31,24 @@ import sys
 
 import traceback
 
-import fuse
-from fuse import Fuse
-fuse.fuse_python_api = (0, 2)
+
 
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
 
-from recuperabit.ifuse import PartView, MultiPartView
+try:
+  import fuse
+  fuseSupport = True
+except ImportError:
+  print("python-fuse not found, disabling fuse support!")
+  fuseSupport = False
+  pass
+
+if fuseSupport:
+  fuse.fuse_python_api = (0, 2)
+  from fuse import Fuse
+  from recuperabit.ifuse import PartView, MultiPartView
 
 
 __author__ = "Andrea Lazzarotto"
@@ -257,6 +266,7 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
     elif cmd == 'quit':
         exit(0)
     elif cmd == 'mount':
+      if fuseSupport:
         try:
             fuse = MultiPartView(parts, shorthands, rebuilt)
             fuse.parse(arguments, errex=0)
@@ -264,6 +274,8 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
         except Exception as e:
             print(e)
             print(traceback.format_exc())
+      else:
+        print('FUSE mounting not available')
     else:
         print('Unknown command.')
 
