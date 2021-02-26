@@ -105,6 +105,14 @@ Therefore, to restore `Partition #0` in our example, you need to run:
 
 The files will be saved inside the output directory specified by `-o`.
 
+## Mounting Partitions
+RecuperaBit along with python-fuse can mount the recovered partitions for easier access to the contents. Run:
+
+    mount [mountpoint]
+
+to mount all of the partitions in folders inside of the mountpoint.
+
+
 ## License
 
 This software is released under the GNU GPLv3. See `LICENSE` for more details.
