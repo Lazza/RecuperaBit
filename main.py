@@ -31,7 +31,9 @@ import sys
 
 import traceback
 
-from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+import fuse
+from fuse import Fuse
+fuse.fuse_python_api = (0, 2)
 
 from recuperabit import logic, utils
 # scanners
@@ -255,26 +257,13 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
     elif cmd == 'quit':
         exit(0)
     elif cmd == 'mount':
-        if len(arguments) == 1:
-            mountpoint = arguments[0]
-            try:
-                fuse = FUSE(MultiPartView(parts, shorthands, rebuilt), mountpoint, nothreads=True, foreground=True)
-            except Exception, e:
-                print(e)
-                print(traceback.format_exc())
-        elif len(arguments) == 2:
-            partid = arguments[0]
-            mountpoint = arguments[1]
-            part = check_valid_part(partid, parts, shorthands)
-            if part is not None:
-                try:
-                    fuse = FUSE(PartView(part, part.root), mountpoint, nothreads=True, foreground=True)
-                except Exception, e:
-                    print(e)
-                    print(traceback.format_exc())
-        else:
-            print 'Wrong number of parameters!'
-                  
+        try:
+            fuse = MultiPartView(parts, shorthands, rebuilt)
+            fuse.parse(arguments, errex=0)
+            fuse.main()
+        except Exception as e:
+            print(e)
+            print(traceback.format_exc())
     else:
         print('Unknown command.')
 
