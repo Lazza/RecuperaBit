@@ -46,7 +46,7 @@ def windows_time(timestamp):
         value = int.from_bytes(timestamp, byteorder='little', signed=False)
         converted = datetime.utcfromtimestamp(value/10.**7 - 11644473600)
         return converted
-    except (ValueError, OverflowError):
+    except (ValueError, OverflowError, OSError):
         return None
 
 
