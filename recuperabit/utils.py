@@ -42,7 +42,7 @@ def sectors(image, offset, size, bsize=sector_size, fill=True):
     read = True
     try:
         image.seek(offset * bsize)
-    except IOError:
+    except (IOError, OverflowError):
         read = False
     if read:
         try:
