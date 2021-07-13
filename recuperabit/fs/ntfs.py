@@ -319,7 +319,7 @@ class NTFSFile(File):
             logging.warning(
                 'Failed to read byte(s). Padding with 0x00. Offset: {} Size: '
                 '{}'.format(offset, size))
-            dump += bytearray('\x00' * (size - len(dump)))
+            dump += bytearray(b'\x00' * (size - len(dump)))
         return dump
 
     def content_iterator(self, partition, image, datas):
