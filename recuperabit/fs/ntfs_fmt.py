@@ -19,10 +19,12 @@
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from ..utils import printable, unpack
 
+
+time_start = datetime(1601, 1, 1, tzinfo=timezone.utc)
 
 def printable_name(name):
     """Return a printable name decoded in UTF-16."""
@@ -44,7 +46,7 @@ def windows_time(timestamp):
     """Convert a date-time value from Microsoft filetime to UTC."""
     try:
         value = int.from_bytes(timestamp, byteorder='little', signed=False)
-        converted = datetime.utcfromtimestamp(value/10.**7 - 11644473600)
+        converted = time_start + timedelta(milliseconds = value//10000)
         return converted
     except (ValueError, OverflowError, OSError):
         return None

@@ -25,6 +25,7 @@ import logging
 import os
 import os.path
 import sys
+import time
 import types
 
 from .utils import tiny_repr
@@ -252,6 +253,12 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
                 open(restore_path, 'wb').close()
     except IOError:
         logging.error(u'IOError when trying to create %s', restore_path)
+
+    mtime, atime, ctime = node.get_mac()
+    if mtime is not None:
+        mtime = min(mtime, atime or mtime, ctime or mtime)
+        mtime = time.mktime(mtime.astimezone().timetuple())
+        os.utime(restore_path, (mtime, mtime))
 
     if is_directory:
         for child in node.children:

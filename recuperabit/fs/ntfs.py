@@ -306,6 +306,7 @@ class NTFSFile(File):
             parent_id = first['parent_entry']
             File.set_parent(self, parent_id)
             File.set_offset(self, offset)
+            first = attrs.get('$STANDARD_INFORMATION', filtered[0])['content']
             File.set_mac(
                 self, first['modification_time'],
                 first['access_time'], first['creation_time']
