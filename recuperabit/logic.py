@@ -254,11 +254,12 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
     except IOError:
         logging.error(u'IOError when trying to create %s', restore_path)
 
-    mtime, atime, ctime = node.get_mac()
+    # Restore Modification + Access time
+    mtime, atime, _ = node.get_mac()
     if mtime is not None:
-        mtime = min(mtime, atime or mtime, ctime or mtime)
+        atime = time.mktime(atime.astimezone().timetuple())
         mtime = time.mktime(mtime.astimezone().timetuple())
-        os.utime(restore_path, (mtime, mtime))
+        os.utime(restore_path, (atime, mtime))
 
     if is_directory:
         for child in node.children:
