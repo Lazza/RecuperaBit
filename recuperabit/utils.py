@@ -307,7 +307,7 @@ def csv_part(part):
     for index in part.files:
         obj = part.files[index]
         contents.append(
-                u'%s,%s,"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s' % (
+                u'%s,%s,"%s","%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s' % (
                     obj.index, obj.parent, obj.name,
                     obj.full_path(part),
                     obj.mac['modification'], obj.mac['access'],
