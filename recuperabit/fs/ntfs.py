@@ -285,6 +285,7 @@ class NTFSFile(File):
         filtered = [
             f for f in filenames if 'content' in f and
             f['content'] is not None and
+            'name_length' in f['content'] and
             f['content']['name_length'] > 0 and
             f['content']['name'] is not None
         ]
