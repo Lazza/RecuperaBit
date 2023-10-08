@@ -299,7 +299,7 @@ def tikz_part(part):
 def csv_part(part):
     """Provide a CSV representation for a partition."""
     contents = [
-        ','.join(('Id', 'Parent', 'Name', 'Modification Time',
+        ','.join(('Id', 'Parent', 'Name', 'Full Path', 'Modification Time',
                   'Access Time', 'Creation Time', 'Size (bytes)',
                   'Size (human)', 'Offset (bytes)', 'Offset (sectors)',
                   'Directory', 'Deleted', 'Ghost'))
@@ -309,6 +309,7 @@ def csv_part(part):
         contents.append(
                 u'%s,%s,"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s' % (
                     obj.index, obj.parent, obj.name,
+                    obj.full_path(part),
                     obj.mac['modification'], obj.mac['access'],
                     obj.mac['creation'], obj.size,
                     readable_bytes(obj.size),
