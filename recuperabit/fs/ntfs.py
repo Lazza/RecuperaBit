@@ -297,6 +297,8 @@ class NTFSFile(File):
         if not hasname:
             name = 'File_%s' % index
 
+        std_info = attrs.get('$STANDARD_INFORMATION')
+
         is_dir = (parsed['flags'] & 0x02) > 0 and not len(ads)
         is_del = (parsed['flags'] & 0x01) == 0
         File.__init__(self, index, name, size, is_dir, is_del, is_ghost)
@@ -306,10 +308,12 @@ class NTFSFile(File):
             parent_id = first['parent_entry']
             File.set_parent(self, parent_id)
             File.set_offset(self, offset)
-            first = attrs.get('$STANDARD_INFORMATION', filtered[0])['content']
+            time_attribute = std_info or filtered[0]
+        if time_attribute and 'content' in time_attribute:
             File.set_mac(
-                self, first['modification_time'],
-                first['access_time'], first['creation_time']
+                self, time_attribute['content']['modification_time'],
+                time_attribute['content']['access_time'],
+                time_attribute['content']['creation_time'],
             )
         self.ads = ads
 
