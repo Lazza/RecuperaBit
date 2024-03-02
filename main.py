@@ -49,6 +49,7 @@ plugins = (
 commands = (
     ('help', 'Print this help message'),
     ('recoverable', 'List recoverable partitions'),
+    ('recoverable_size <size>', 'List recoverable partitions based on the minimum <size>'),
     ('other', 'List unrecoverable partitions'),
     ('allparts', 'List all partitions'),
     ('tree <part#>', 'Show contents of partition (tree)'),
@@ -241,6 +242,11 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
             print('There are now %d partitions.' % (len(parts), ))
     elif cmd == 'recoverable':
         list_parts(parts, shorthands, lambda x: x.recoverable)
+    elif cmd == 'recoverable_size':
+        if len(arguments) != 1:
+            print('Wrong number of parameters!')
+        else:
+            list_parts(parts, shorthands, lambda x: x.size is not None and x.size > arguments[0])
     elif cmd == 'other':
         list_parts(parts, shorthands, lambda x: not x.recoverable)
     elif cmd == 'allparts':
