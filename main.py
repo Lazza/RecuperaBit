@@ -27,11 +27,31 @@ import locale
 import logging
 import os.path
 import pickle
+import re
 import sys
-
+import subprocess
+import sys
+import os
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
+
+def output_to_pager(text):
+    try:
+        # args stolen fron git source, see `man less`
+        pager = subprocess.Popen(['less', '-F', '-R', '-S', '-X', '-K'],
+                                 stdin=subprocess.PIPE,
+                                 stdout=sys.stdout)
+        if text is None:
+            pager.stdin.write(bytearray("None", 'utf-8'))
+            return
+        for line in text:
+            pager.stdin.write(bytearray("{}{}".format(line, os.linesep), 'utf-8'))
+        pager.stdin.close()
+        pager.wait()
+    except KeyboardInterrupt:
+        pass
+        # let less handle this, -K will exit cleanly
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -52,6 +72,7 @@ commands = (
     ('other', 'List unrecoverable partitions'),
     ('allparts', 'List all partitions'),
     ('tree <part#>', 'Show contents of partition (tree)'),
+    ('gtree <part#> <regex filter>', 'Show contents of partition (tree) in a pager, filtering by regex'),
     ('csv <part#> <path>', 'Save a CSV representation in a file'),
     ('bodyfile <part#> <path>', 'Save a body file representation in a file'),
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
@@ -107,6 +128,22 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 print('-'*10)
                 print(utils.tree_folder(part.root))
                 print(utils.tree_folder(part.lost))
+                print('-'*10)
+    elif cmd == 'gtree':
+        if len(arguments) != 2:
+            print('Wrong number of parameters!')
+        else:
+            part = check_valid_part(arguments[0], parts, shorthands)
+            file_filter = arguments[1]
+            if part is not None:
+                part_id = int(arguments[0])
+                print('-'*10)
+                root = utils.verbose_tree_folder(part_id, part.root, [])
+                lost = utils.verbose_tree_folder(part_id, part.lost, [])
+                if root:
+                    output_to_pager(filter(lambda line: re.match(file_filter, line), root))
+                if lost:
+                    output_to_pager(filter(lambda line: re.match(file_filter, line), lost))
                 print('-'*10)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
