@@ -93,6 +93,11 @@ def list_parts(parts, shorthands, test):
             print('Partition #' + str(i), '->', parts[part])
 
 
+def get_parts(parts, shorthands, test):
+    """List partitions corresponding to test."""
+    return [i for i, part in shorthands if test(parts[part])]
+
+
 def check_valid_part(num, parts, shorthands, rebuild=True):
     """Check if the required partition is valid."""
     try:
@@ -111,6 +116,19 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
         return part
     print('No partition with given ID!')
     return None
+
+
+def print_part_tree(part_id, file_filter, parts, shorthands):
+    part = check_valid_part(part_id, parts, shorthands)
+    if part is not None:
+        part_id = int(part_id)
+        root = utils.verbose_tree_folder(part_id, part.root, [])
+        lost = utils.verbose_tree_folder(part_id, part.lost, [])
+        if root:
+            output_to_pager(filter(lambda line: re.match(file_filter, line), root))
+        if lost:
+            output_to_pager(filter(lambda line: re.match(file_filter, line), lost))
+        print('-' * 10)
 
 
 def interpret(cmd, arguments, parts, shorthands, outdir):
@@ -136,15 +154,12 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
             part = check_valid_part(arguments[0], parts, shorthands)
             file_filter = arguments[1]
             if part is not None:
-                part_id = int(arguments[0])
-                print('-'*10)
-                root = utils.verbose_tree_folder(part_id, part.root, [])
-                lost = utils.verbose_tree_folder(part_id, part.lost, [])
-                if root:
-                    output_to_pager(filter(lambda line: re.match(file_filter, line), root))
-                if lost:
-                    output_to_pager(filter(lambda line: re.match(file_filter, line), lost))
-                print('-'*10)
+                print_part_tree(arguments[0], file_filter, parts, shorthands)
+            else:
+                l_parts = get_parts(parts, shorthands, lambda x: x.recoverable)
+                for i in l_parts:
+                    print_part_tree(i, file_filter, parts, shorthands)
+
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
             print('Wrong number of parameters!')
