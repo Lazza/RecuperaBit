@@ -60,7 +60,8 @@ commands = (
     ('other', 'List unrecoverable partitions'),
     ('allparts', 'List all partitions'),
     ('tree <part#>', 'Show contents of partition (tree)'),
-    ('gtree <part#> <regex filter>', 'Show contents of partition (tree) in a pager, filtering by regex'),
+    ('gtree <part#> <...grep options>', 'Show contents of partition (tree) in a pager, piping through grep. '
+                                        'Invalid partition id gets all partitions'),
     ('csv <part#> <path>', 'Save a CSV representation in a file'),
     ('bodyfile <part#> <path>', 'Save a body file representation in a file'),
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
