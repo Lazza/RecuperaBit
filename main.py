@@ -36,6 +36,10 @@ import os
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
+try:
+    import readline
+except:
+    pass #readline not available
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -70,15 +74,14 @@ commands = (
 rebuilt = set()
 
 
-def output_to_pager(text):
-    grep_opts = None
+def output_to_pager(text, grep_opts=None):
     try:
-        # args stolen from git source, see `man less`
-        # pager = subprocess.Popen(f'grep {grep_opts} | less -F -R -S -X -K',
-        # TODO: add more grepping options than plain old single regex i.e. -v
-        pager = subprocess.Popen(['less', '-F', '-R', '-S', '-X', '-K'],
+        # args for lex stolen from git source, see `man less`
+        pager = subprocess.Popen('grep {} | less -F -R -S -X -K'
+                                 .format('".*"' if grep_opts is None else grep_opts),
                                  stdin=subprocess.PIPE,
-                                 stdout=sys.stdout)
+                                 stdout=sys.stdout,
+                                 shell=True)
         if text is None:
             pager.stdin.write(bytearray("None", 'utf-8'))
             return
@@ -122,6 +125,7 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     print('No partition with given ID!')
     return None
 
+
 def quiet_check_valid_part(num, parts, shorthands, rebuild=True):
     """Check if the required partition is valid."""
     # TODO merge this function with the one above: kwarg to remove log
@@ -141,20 +145,20 @@ def quiet_check_valid_part(num, parts, shorthands, rebuild=True):
     return None
 
 
-def print_part_tree(part_id, file_filter, parts, shorthands, grep_opts=None):
+def print_part_tree(part_id, file_filter, parts, shorthands):
     part = check_valid_part(part_id, parts, shorthands)
     if part is not None:
         part_id = int(part_id)
         root = utils.verbose_tree_folder(part_id, part.root, [])
         lost = utils.verbose_tree_folder(part_id, part.lost, [])
         if root:
-            output_to_pager(filter(lambda line: re.match(file_filter, line), root))
+            output_to_pager(root, file_filter)
         if lost:
-            output_to_pager(filter(lambda line: re.match(file_filter, line), lost))
+            output_to_pager(lost, file_filter)
         print('-' * 10)
 
 
-def print_all_parts_tree(file_filter, parts, shorthands, grep_opts=None):
+def print_all_parts_tree(file_filter, parts, shorthands):
     l_parts = get_parts(parts, shorthands, lambda x: x.recoverable)
     all_parts = filter(lambda p: p is not None, [(i, quiet_check_valid_part(i, parts, shorthands)) for i in l_parts])
     output = []
@@ -165,9 +169,9 @@ def print_all_parts_tree(file_filter, parts, shorthands, grep_opts=None):
             output.extend(root)  # TODO: maybe just log to file and not store into memory in case it's too large
         if lost:
             output.extend(lost)  # TODO: maybe no pager if logfile available
+        output.extend(['-' * 10])
     #TODO: possibly filter by size as well
-    output_to_pager(filter(lambda line: re.match(file_filter, line), output))
-    print('-' * 10)
+    output_to_pager(output, file_filter)
 
 
 def interpret(cmd, arguments, parts, shorthands, outdir):
@@ -187,15 +191,15 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 print(utils.tree_folder(part.lost))
                 print('-'*10)
     elif cmd == 'gtree':
-        if len(arguments) != 2:
-            print('Wrong number of parameters!')
+        if len(arguments) < 2:
+            file_filter = '".*"'
         else:
-            part = check_valid_part(arguments[0], parts, shorthands)
-            file_filter = arguments[1]
-            if part is not None:
-                print_part_tree(arguments[0], file_filter, parts, shorthands)
-            else:
-                print_all_parts_tree(file_filter, parts, shorthands)
+            file_filter = '"' + '" "'.join(arguments[1:]) + '"'
+        part = quiet_check_valid_part(arguments[0], parts, shorthands)
+        if part is not None:
+            print_part_tree(arguments[0], file_filter, parts, shorthands)
+        else:
+            print_all_parts_tree(file_filter, parts, shorthands)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
             print('Wrong number of parameters!')
