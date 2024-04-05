@@ -28,6 +28,7 @@ import logging
 import os.path
 import pickle
 import re
+import shlex
 import sys
 import subprocess
 import sys
@@ -35,23 +36,6 @@ import os
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
-
-def output_to_pager(text):
-    try:
-        # args stolen fron git source, see `man less`
-        pager = subprocess.Popen(['less', '-F', '-R', '-S', '-X', '-K'],
-                                 stdin=subprocess.PIPE,
-                                 stdout=sys.stdout)
-        if text is None:
-            pager.stdin.write(bytearray("None", 'utf-8'))
-            return
-        for line in text:
-            pager.stdin.write(bytearray("{}{}".format(line, os.linesep), 'utf-8'))
-        pager.stdin.close()
-        pager.wait()
-    except KeyboardInterrupt:
-        pass
-        # let less handle this, -K will exit cleanly
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -86,6 +70,27 @@ commands = (
 rebuilt = set()
 
 
+def output_to_pager(text):
+    grep_opts = None
+    try:
+        # args stolen from git source, see `man less`
+        # pager = subprocess.Popen(f'grep {grep_opts} | less -F -R -S -X -K',
+        # TODO: add more grepping options than plain old single regex i.e. -v
+        pager = subprocess.Popen(['less', '-F', '-R', '-S', '-X', '-K'],
+                                 stdin=subprocess.PIPE,
+                                 stdout=sys.stdout)
+        if text is None:
+            pager.stdin.write(bytearray("None", 'utf-8'))
+            return
+        for line in text:
+            pager.stdin.write(bytearray("{}{}".format(line, os.linesep), 'utf-8'))
+        pager.stdin.close()
+        pager.wait()
+    except KeyboardInterrupt:
+        pass
+        # let less handle this, -K will exit cleanly
+
+
 def list_parts(parts, shorthands, test):
     """List partitions corresponding to test."""
     for i, part in shorthands:
@@ -117,8 +122,26 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     print('No partition with given ID!')
     return None
 
+def quiet_check_valid_part(num, parts, shorthands, rebuild=True):
+    """Check if the required partition is valid."""
+    # TODO merge this function with the one above: kwarg to remove log
+    try:
+        i = int(num)
+    except ValueError:
+        print('Value is not valid!')
+        return None
+    if i in range(len(shorthands)):
+        i, par = shorthands[i]
+        part = parts[par]
+        if rebuild and par not in rebuilt:
+            part.rebuild()
+            rebuilt.add(par)
+        return part
+    print('No partition with given ID!')
+    return None
 
-def print_part_tree(part_id, file_filter, parts, shorthands):
+
+def print_part_tree(part_id, file_filter, parts, shorthands, grep_opts=None):
     part = check_valid_part(part_id, parts, shorthands)
     if part is not None:
         part_id = int(part_id)
@@ -129,6 +152,22 @@ def print_part_tree(part_id, file_filter, parts, shorthands):
         if lost:
             output_to_pager(filter(lambda line: re.match(file_filter, line), lost))
         print('-' * 10)
+
+
+def print_all_parts_tree(file_filter, parts, shorthands, grep_opts=None):
+    l_parts = get_parts(parts, shorthands, lambda x: x.recoverable)
+    all_parts = filter(lambda p: p is not None, [(i, quiet_check_valid_part(i, parts, shorthands)) for i in l_parts])
+    output = []
+    for i, part in all_parts:
+        root = utils.verbose_tree_folder(i, part.root, [])
+        lost = utils.verbose_tree_folder(i, part.lost, [])
+        if root:
+            output.extend(root)  # TODO: maybe just log to file and not store into memory in case it's too large
+        if lost:
+            output.extend(lost)  # TODO: maybe no pager if logfile available
+    #TODO: possibly filter by size as well
+    output_to_pager(filter(lambda line: re.match(file_filter, line), output))
+    print('-' * 10)
 
 
 def interpret(cmd, arguments, parts, shorthands, outdir):
@@ -156,10 +195,7 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
             if part is not None:
                 print_part_tree(arguments[0], file_filter, parts, shorthands)
             else:
-                l_parts = get_parts(parts, shorthands, lambda x: x.recoverable)
-                for i in l_parts:
-                    print_part_tree(i, file_filter, parts, shorthands)
-
+                print_all_parts_tree(file_filter, parts, shorthands)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
             print('Wrong number of parameters!')
@@ -332,6 +368,9 @@ def main():
         '-o', '--outputdir', type=str, help='directory for restored contents'
         ' and output files'
     )
+    parser.add_argument(
+        '-l', '--outputlog', type=str, help='file for logs to be stored'
+    )
     args = parser.parse_args()
 
     try:
@@ -348,6 +387,11 @@ def main():
         logging.info('No output directory specified, defaulting to '
                      'recuperabit_output')
         args.outputdir = 'recuperabit_output'
+
+    if args.outputlog is None:
+        logging.info('No output directory specified, defaulting to '
+                     'recuperabit_output/restore.log')
+        # TODO: write output from gtree to file
 
     # Try to reload information from the savefile
     if args.savefile is not None:
@@ -379,7 +423,7 @@ def main():
     # Ask for confirmation before beginning the process
     try:
         confirm = input('Type [Enter] to start the analysis or '
-                            '"exit" / "quit" / "q" to quit: ')
+                        '"exit" / "quit" / "q" to quit: ')
     except EOFError:
         print('')
         exit(0)
@@ -414,7 +458,7 @@ def main():
     while True:
         print('\nWrite command ("help" for details):')
         try:
-            command = input('> ').split(' ')
+            command = shlex.split(input('> '))
         except (EOFError, KeyboardInterrupt):
             print('')
             exit(0)
