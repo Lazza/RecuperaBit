@@ -376,6 +376,9 @@ def main():
     parser.add_argument(
         '-l', '--outputlog', type=str, help='file for logs to be stored'
     )
+    parser.add_argument(
+        '-n', '--skipexisting', type=str, help='do not write anew content for existing files to output dir'
+    )
     args = parser.parse_args()
 
     try:
@@ -397,6 +400,12 @@ def main():
         logging.info('No output directory specified, defaulting to '
                      'recuperabit_output/restore.log')
         # TODO: write output from gtree to file
+
+    if args.skipexisting is None:
+        logic.__skip_existing_files__ = True
+        logging.info('No skip existing specified, defaulting to True')
+    else:
+        logic.__skip_existing_files__ = args.skipexisting != "False"
 
     # Try to reload information from the savefile
     if args.savefile is not None:
@@ -467,8 +476,11 @@ def main():
         except (EOFError, KeyboardInterrupt):
             print('')
             exit(0)
-        cmd = command[0]
-        arguments = command[1:]
+        try:
+            cmd = command[0]
+            arguments = command[1:]
+        except IndexError:
+            continue
         interpret(cmd, arguments, parts, shorthands, args.outputdir)
 
 if __name__ == '__main__':

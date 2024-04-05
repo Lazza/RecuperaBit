@@ -27,8 +27,10 @@ import os.path
 import sys
 import time
 import types
+from datetime import datetime, timezone
 
 from .utils import tiny_repr
+__skip_existing_files__ = True
 
 
 class SparseList(object):
@@ -237,28 +239,39 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
     if is_directory and content is not None:
         logging.warning(u'Directory %s has data content!', file_path)
         restore_path += '_recuperabit_content'
-
+    failed = False
     try:
         if content is not None:
-            logging.info(u'Restoring #%s %s', node.index, file_path)
-            with codecs.open(restore_path, 'wb') as outfile:
-                if isinstance(content, types.GeneratorType):
-                    for piece in content:
-                        outfile.write(piece)
-                else:
-                    outfile.write(content)
+            if not os.path.isfile(restore_path) or not __skip_existing_files__:
+                logging.info(u'Restoring #%s %s', node.index, file_path)
+                with codecs.open(restore_path, 'wb') as outfile:
+                    if isinstance(content, types.GeneratorType):
+                        for piece in content:
+                            outfile.write(piece)
+                    else:
+                        outfile.write(content)
+            else:
+                logging.info(u'File #%s %s exists', node.index, file_path)
         else:
             if not is_directory:
                 # Empty file
                 open(restore_path, 'wb').close()
     except IOError:
-        logging.error(u'IOError when trying to create %s', restore_path)
+        failed = True
+        logging.debug(u'IOError when trying to create %s', restore_path)
 
     # Restore Modification + Access time
     mtime, atime, _ = node.get_mac()
-    if mtime is not None:
-        atime = time.mktime(atime.astimezone().timetuple())
-        mtime = time.mktime(mtime.astimezone().timetuple())
+
+    def workaround_ltimezone_bug(l_time):
+        try:
+            return l_time.astimezone()
+        except ValueError:
+            return datetime(1901, 1, 1, 0, 0, tzinfo=timezone.utc).astimezone()
+
+    if mtime is not None and not failed:
+        atime = time.mktime(workaround_ltimezone_bug(atime).timetuple())
+        mtime = time.mktime(workaround_ltimezone_bug(mtime).timetuple())
         os.utime(restore_path, (atime, mtime))
 
     if is_directory:
