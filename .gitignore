@@ -3,6 +3,7 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 *.code-workspace
+.idea
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
