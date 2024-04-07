@@ -188,6 +188,12 @@ def _file_tree_repr(node):
     )
 
 
+def _short_file_tree_repr(node):
+    """Give a nice representation for the tree."""
+    if node.is_directory:
+        return [f'{node.name}/', None]
+    return [f'{node.name}', readable_bytes(node.size)]
+
 def tree_folder(directory, padding=0):
     """Return a tree-like textual representation of a directory."""
     lines = []
@@ -205,6 +211,18 @@ def tree_folder(directory, padding=0):
                 pad + _file_tree_repr(entry)
             )
     return '\n'.join(lines)
+
+
+def verbose_tree_folder(part_id, directory, lines, prefix=""):
+    """Return a tree-like textual representation of a directory."""
+    if len(directory.children) == 0 or not directory.is_directory:
+        node_name, size = _short_file_tree_repr(directory)
+        lines.append(f"#{part_id}: Size {size}: " + prefix + node_name)
+        return
+    for entry in directory.children:
+        parent_folder, _ = _short_file_tree_repr(directory)
+        verbose_tree_folder(part_id, entry, lines, prefix + parent_folder)
+    return lines
 
 
 def _bodyfile_repr(node, path):

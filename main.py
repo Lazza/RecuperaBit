@@ -27,11 +27,19 @@ import locale
 import logging
 import os.path
 import pickle
+import re
+import shlex
 import sys
-
+import subprocess
+import sys
+import os
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
+try:
+    import readline
+except:
+    pass #readline not available
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -52,6 +60,8 @@ commands = (
     ('other', 'List unrecoverable partitions'),
     ('allparts', 'List all partitions'),
     ('tree <part#>', 'Show contents of partition (tree)'),
+    ('gtree <part#> <...grep options>', 'Show contents of partition (tree) in a pager, piping through grep. '
+                                        'Invalid partition id gets all partitions'),
     ('csv <part#> <path>', 'Save a CSV representation in a file'),
     ('bodyfile <part#> <path>', 'Save a body file representation in a file'),
     ('tikzplot <part#> [<path>]', 'Produce LaTeX code to draw a Tikz figure'),
@@ -65,11 +75,36 @@ commands = (
 rebuilt = set()
 
 
+def output_to_pager(text, grep_opts=None):
+    try:
+        # args for lex stolen from git source, see `man less`
+        pager = subprocess.Popen('grep {} | less -F -R -S -X -K'
+                                 .format('".*"' if grep_opts is None else grep_opts),
+                                 stdin=subprocess.PIPE,
+                                 stdout=sys.stdout,
+                                 shell=True)
+        if text is None:
+            pager.stdin.write(bytearray("None", 'utf-8'))
+            return
+        for line in text:
+            pager.stdin.write(bytearray("{}{}".format(line, os.linesep), 'utf-8'))
+        pager.stdin.close()
+        pager.wait()
+    except KeyboardInterrupt:
+        pass
+        # let less handle this, -K will exit cleanly
+
+
 def list_parts(parts, shorthands, test):
     """List partitions corresponding to test."""
     for i, part in shorthands:
         if test(parts[part]):
             print('Partition #' + str(i), '->', parts[part])
+
+
+def get_parts(parts, shorthands, test):
+    """List partitions corresponding to test."""
+    return [i for i, part in shorthands if test(parts[part])]
 
 
 def check_valid_part(num, parts, shorthands, rebuild=True):
@@ -92,6 +127,54 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     return None
 
 
+def quiet_check_valid_part(num, parts, shorthands, rebuild=True):
+    """Check if the required partition is valid."""
+    # TODO merge this function with the one above: kwarg to remove log
+    try:
+        i = int(num)
+    except ValueError:
+        print('Value is not valid!')
+        return None
+    if i in range(len(shorthands)):
+        i, par = shorthands[i]
+        part = parts[par]
+        if rebuild and par not in rebuilt:
+            part.rebuild()
+            rebuilt.add(par)
+        return part
+    print('No partition with given ID!')
+    return None
+
+
+def print_part_tree(part_id, file_filter, parts, shorthands):
+    part = check_valid_part(part_id, parts, shorthands)
+    if part is not None:
+        part_id = int(part_id)
+        root = utils.verbose_tree_folder(part_id, part.root, [])
+        lost = utils.verbose_tree_folder(part_id, part.lost, [])
+        if root:
+            output_to_pager(root, file_filter)
+        if lost:
+            output_to_pager(lost, file_filter)
+        print('-' * 10)
+
+
+def print_all_parts_tree(file_filter, parts, shorthands):
+    l_parts = get_parts(parts, shorthands, lambda x: x.recoverable)
+    all_parts = filter(lambda p: p is not None, [(i, quiet_check_valid_part(i, parts, shorthands)) for i in l_parts])
+    output = []
+    for i, part in all_parts:
+        root = utils.verbose_tree_folder(i, part.root, [])
+        lost = utils.verbose_tree_folder(i, part.lost, [])
+        if root:
+            output.extend(root)  # TODO: maybe just log to file and not store into memory in case it's too large
+        if lost:
+            output.extend(lost)  # TODO: maybe no pager if logfile available
+        output.extend(['-' * 10])
+    #TODO: possibly filter by size as well
+    output_to_pager(output, file_filter)
+
+
 def interpret(cmd, arguments, parts, shorthands, outdir):
     """Perform command required by user."""
     if cmd == 'help':
@@ -108,6 +191,16 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
                 print(utils.tree_folder(part.root))
                 print(utils.tree_folder(part.lost))
                 print('-'*10)
+    elif cmd == 'gtree':
+        if len(arguments) < 2:
+            file_filter = '".*"'
+        else:
+            file_filter = '"' + '" "'.join(arguments[1:]) + '"'
+        part = quiet_check_valid_part(arguments[0], parts, shorthands)
+        if part is not None:
+            print_part_tree(arguments[0], file_filter, parts, shorthands)
+        else:
+            print_all_parts_tree(file_filter, parts, shorthands)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:
             print('Wrong number of parameters!')
@@ -280,6 +373,12 @@ def main():
         '-o', '--outputdir', type=str, help='directory for restored contents'
         ' and output files'
     )
+    parser.add_argument(
+        '-l', '--outputlog', type=str, help='file for logs to be stored'
+    )
+    parser.add_argument(
+        '-n', '--skipexisting', type=str, help='do not write anew content for existing files to output dir'
+    )
     args = parser.parse_args()
 
     try:
@@ -296,6 +395,17 @@ def main():
         logging.info('No output directory specified, defaulting to '
                      'recuperabit_output')
         args.outputdir = 'recuperabit_output'
+
+    if args.outputlog is None:
+        logging.info('No output directory specified, defaulting to '
+                     'recuperabit_output/restore.log')
+        # TODO: write output from gtree to file
+
+    if args.skipexisting is None:
+        logic.__skip_existing_files__ = True
+        logging.info('No skip existing specified, defaulting to True')
+    else:
+        logic.__skip_existing_files__ = args.skipexisting != "False"
 
     # Try to reload information from the savefile
     if args.savefile is not None:
@@ -327,7 +437,7 @@ def main():
     # Ask for confirmation before beginning the process
     try:
         confirm = input('Type [Enter] to start the analysis or '
-                            '"exit" / "quit" / "q" to quit: ')
+                        '"exit" / "quit" / "q" to quit: ')
     except EOFError:
         print('')
         exit(0)
@@ -362,12 +472,15 @@ def main():
     while True:
         print('\nWrite command ("help" for details):')
         try:
-            command = input('> ').split(' ')
+            command = shlex.split(input('> '))
         except (EOFError, KeyboardInterrupt):
             print('')
             exit(0)
-        cmd = command[0]
-        arguments = command[1:]
+        try:
+            cmd = command[0]
+            arguments = command[1:]
+        except IndexError:
+            continue
         interpret(cmd, arguments, parts, shorthands, args.outputdir)
 
 if __name__ == '__main__':
