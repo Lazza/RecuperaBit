@@ -262,7 +262,7 @@ def recursive_restore(node, part, outputdir, make_dirs=True):
             mtime = time.mktime(mtime.astimezone().timetuple())
             os.utime(restore_path, (atime, mtime))
     except IOError:
-        logging.error(u'IOError while set atime and mtime %s', restore_path)
+        logging.error(u'IOError while setting atime and mtime of %s', restore_path)
 
     if is_directory:
         for child in node.children:
