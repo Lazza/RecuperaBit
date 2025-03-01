@@ -255,10 +255,10 @@ def main():
     """Wrap the program logic inside a function."""
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-    print("     ___                                ___ _ _   ")
-    print("    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ ")
-    print("    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|")
-    print("    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|")
+    print(r"     ___                                ___ _ _   ")
+    print(r"    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ ")
+    print(r"    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|")
+    print(r"    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|")
     print("                    |_|   v{}".format(__version__))
     print('   ', __copyright__, '<%s>' % __email__)
     print('    Released under the', __license__)
