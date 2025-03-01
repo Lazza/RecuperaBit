@@ -2,7 +2,11 @@
 
 # ![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
 
-[![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/AndreaLazzarotto/)
+<p><a class="badge-chip" href="https://github.com/Lazza/RecuperaBit/blob/master/LICENSE.md"><img alt="GPL-3.0 license" src="https://badgen.net/github/license/Lazza/RecuperaBit"></a>
+<a class="badge-chip" href="https://github.com/Lazza/RecuperaBit/releases"><img alt="Latest release" src="https://badgen.net/github/release/Lazza/RecuperaBit"></a>
+<a class="badge-chip" href="https://github.com/Lazza/RecuperaBit/stargazers"><img alt="Stars counter" src="https://badgen.net/github/stars/Lazza/RecuperaBit"></a>
+<a class="badge-chip" href="https://project-types.github.io/#stadium"><img alt="Stadium badge" src="https://badgen.net/static/project type/stadium/orange"></a>
+<a class="badge-chip" href="https://ko-fi.com/thelazza"><img alt="Donate on Ko-fi" src="https://badgen.net/static/ko-fi/donate/yellow"></a></p>
 
 A software which attempts to reconstruct file system structures and recover
 files. Currently it supports only NTFS.
