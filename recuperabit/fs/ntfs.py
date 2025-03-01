@@ -303,6 +303,9 @@ class NTFSFile(File):
         is_dir = (parsed['flags'] & 0x02) > 0 and not len(ads)
         is_del = (parsed['flags'] & 0x01) == 0
         File.__init__(self, index, name, size, is_dir, is_del, is_ghost)
+
+        time_attribute = None
+
         # Additional attributes
         if hasname:
             first = filtered[0]['content']
