@@ -28,6 +28,10 @@ import logging
 import os.path
 import pickle
 import sys
+try:
+    import readline
+except ImportError:
+    pass
 
 from recuperabit import logic, utils
 # scanners
