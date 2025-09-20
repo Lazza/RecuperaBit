@@ -24,6 +24,7 @@ including MFT entries and directory indexes."""
 
 import logging
 from collections import Counter
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterator, Set
 
 from .constants import max_sectors, sector_size
 from .core_types import DiskScanner, File, Partition
@@ -36,7 +37,7 @@ from ..logic import SparseList, approximate_matching
 from ..utils import merge, sectors, unpack
 
 # Some attributes may appear multiple times
-multiple_attributes = set([
+multiple_attributes: Set[str] = set([
     '$FILE_NAME',
     '$DATA',
     '$INDEX_ROOT',
@@ -45,11 +46,11 @@ multiple_attributes = set([
 ])
 
 # Size of records in sectors
-FILE_size = 2
-INDX_size = 8
+FILE_size: int = 2
+INDX_size: int = 8
 
 
-def best_name(entries):
+def best_name(entries: List[Tuple[int, str]]) -> Optional[str]:
     """Return the best file name available.
 
     This function accepts a list of tuples formed by a namespace and a string.
@@ -66,7 +67,7 @@ def best_name(entries):
     return name if len(name) else None
 
 
-def parse_mft_attr(attr):
+def parse_mft_attr(attr: bytes) -> Tuple[Dict[str, Any], Optional[str]]:
     """Parse the contents of a MFT attribute."""
     header = unpack(attr, attr_header_fmt)
     attr_type = header['type']
@@ -94,7 +95,7 @@ def parse_mft_attr(attr):
     return header, name
 
 
-def _apply_fixup_values(header, entry):
+def _apply_fixup_values(header: Dict[str, Any], entry: bytearray) -> None:
     """Apply the fixup values to FILE and INDX records."""
     offset = header['off_fixup']
     for i in range(1, header['n_entries']):
@@ -102,7 +103,7 @@ def _apply_fixup_values(header, entry):
         entry[pos-2:pos] = entry[offset + 2*i:offset + 2*(i+1)]
 
 
-def _attributes_reader(entry, offset):
+def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
     """Read every attribute."""
     attributes = {}
     while offset < len(entry) - 16:
@@ -133,7 +134,7 @@ def _attributes_reader(entry, offset):
     return attributes
 
 
-def parse_file_record(entry):
+def parse_file_record(entry: bytes) -> Dict[str, Any]:
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
     if (header['size_alloc'] is None or
@@ -154,7 +155,7 @@ def parse_file_record(entry):
     return header
 
 
-def parse_indx_record(entry):
+def parse_indx_record(entry: bytes) -> Dict[str, Any]:
     """Parse the contents of a INDX record (directory index)."""
     header = unpack(entry, indx_fmt)
 
@@ -200,7 +201,7 @@ def parse_indx_record(entry):
     return header
 
 
-def _integrate_attribute_list(parsed, part, image):
+def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', image: Any) -> None:
     """Integrate missing attributes in the parsed MTF entry."""
     base_record = parsed['record_n']
     attrs = parsed['attributes']
@@ -264,7 +265,7 @@ def _integrate_attribute_list(parsed, part, image):
 
 class NTFSFile(File):
     """NTFS File."""
-    def __init__(self, parsed, offset, is_ghost=False, ads=''):
+    def __init__(self, parsed: Dict[str, Any], offset: Optional[int], is_ghost: bool = False, ads: str = '') -> None:
         index = parsed['record_n']
         ads_suffix = ':' + ads if ads != '' else ads
         if ads != '':
@@ -322,7 +323,7 @@ class NTFSFile(File):
         self.ads = ads
 
     @staticmethod
-    def _padded_bytes(image, offset, size):
+    def _padded_bytes(image: Any, offset: int, size: int) -> bytes:
         dump = sectors(image, offset, size, 1)
         if len(dump) < size:
             logging.warning(
@@ -331,7 +332,7 @@ class NTFSFile(File):
             dump += bytearray(b'\x00' * (size - len(dump)))
         return dump
 
-    def content_iterator(self, partition, image, datas):
+    def content_iterator(self, partition: 'NTFSPartition', image: Any, datas: List[Dict[str, Any]]) -> Iterator[bytes]:
         """Return an iterator for the contents of this file."""
         vcn = 0
         spc = partition.sec_per_clus
@@ -378,7 +379,7 @@ class NTFSFile(File):
                     yield bytes(partial)
             vcn = attr['end_VCN'] + 1
 
-    def get_content(self, partition):
+    def get_content(self, partition: 'NTFSPartition') -> Optional[Union[bytes, Iterator[bytes]]]:
         """Extract the content of the file.
 
         This method works by extracting the $DATA attribute."""
@@ -439,7 +440,7 @@ class NTFSFile(File):
                 )
             return self.content_iterator(partition, image, non_resident)
 
-    def ignore(self):
+    def ignore(self) -> bool:
         """Determine which files should be ignored."""
         return (
             (self.index == '8:$Bad') or
@@ -449,13 +450,13 @@ class NTFSFile(File):
 
 class NTFSPartition(Partition):
     """Partition with additional fields for NTFS recovery."""
-    def __init__(self, scanner, position=None):
+    def __init__(self, scanner: 'NTFSScanner', position: Optional[int] = None) -> None:
         Partition.__init__(self, 'NTFS', 5, scanner)
-        self.sec_per_clus = None
-        self.mft_pos = position
-        self.mftmirr_pos = None
+        self.sec_per_clus: Optional[int] = None
+        self.mft_pos: Optional[int] = position
+        self.mftmirr_pos: Optional[int] = None
 
-    def additional_repr(self):
+    def additional_repr(self) -> List[Tuple[str, Any]]:
         """Return additional values to show in the string representation."""
         return [
             ('Sec/Clus', self.sec_per_clus),
@@ -466,17 +467,17 @@ class NTFSPartition(Partition):
 
 class NTFSScanner(DiskScanner):
     """NTFS Disk Scanner."""
-    def __init__(self, pointer):
+    def __init__(self, pointer: Any) -> None:
         DiskScanner.__init__(self, pointer)
-        self.found_file = set()
-        self.parsed_file_review = {}
-        self.found_indx = set()
-        self.parsed_indx = {}
-        self.indx_list = None
-        self.found_boot = []
-        self.found_spc = []
+        self.found_file: Set[int] = set()
+        self.parsed_file_review: Dict[int, Dict[str, Any]] = {}
+        self.found_indx: Set[int] = set()
+        self.parsed_indx: Dict[int, Dict[str, Any]] = {}
+        self.indx_list: Optional[SparseList[int]] = None
+        self.found_boot: List[int] = []
+        self.found_spc: List[int] = []
 
-    def feed(self, index, sector):
+    def feed(self, index: int, sector: bytes) -> Optional[str]:
         """Feed a new sector."""
         # check boot sector
         if sector.endswith(b'\x55\xAA') and b'NTFS' in sector[:8]:
@@ -494,7 +495,7 @@ class NTFSScanner(DiskScanner):
             return 'NTFS index record'
 
     @staticmethod
-    def add_indx_entries(entries, part):
+    def add_indx_entries(entries: List[Dict[str, Any]], part: NTFSPartition) -> None:
         """Insert new ghost files which were not already found."""
         for rec in entries:
             if (rec['record_n'] not in part.files and
@@ -512,7 +513,7 @@ class NTFSScanner(DiskScanner):
                 rec['flags'] = 0x1
                 part.add_file(NTFSFile(rec, None, is_ghost=True))
 
-    def add_from_indx_root(self, parsed, part):
+    def add_from_indx_root(self, parsed: Dict[str, Any], part: NTFSPartition) -> None:
         """Add ghost entries to part from INDEX_ROOT attributes in parsed."""
         for attribute in parsed['attributes']['$INDEX_ROOT']:
             if (attribute.get('content') is None or
@@ -520,7 +521,7 @@ class NTFSScanner(DiskScanner):
                 continue
             self.add_indx_entries(attribute['content']['records'], part)
 
-    def most_likely_sec_per_clus(self):
+    def most_likely_sec_per_clus(self) -> List[int]:
         """Determine the most likely value of sec_per_clus of each partition,
         to speed up the search."""
         counter = Counter()
@@ -528,7 +529,7 @@ class NTFSScanner(DiskScanner):
         counter.update(2**i for i in range(8))
         return [i for i, _ in counter.most_common()]
 
-    def find_boundary(self, part, mft_address, multipliers):
+    def find_boundary(self, part: NTFSPartition, mft_address: int, multipliers: List[int]) -> Tuple[Optional[int], Optional[int]]:
         """Determine the starting sector of a partition with INDX records."""
         nodes = (
             self.parsed_file_review[node.offset]
@@ -593,7 +594,7 @@ class NTFSScanner(DiskScanner):
         else:
             return (None, None)
 
-    def add_from_indx_allocation(self, parsed, part):
+    def add_from_indx_allocation(self, parsed: Dict[str, Any], part: NTFSPartition) -> None:
         """Add ghost entries to part from INDEX_ALLOCATION attributes in parsed.
 
         This procedure requires that the beginning of the partition has already
@@ -625,7 +626,7 @@ class NTFSScanner(DiskScanner):
             entries = parse_indx_record(dump)['entries']
             self.add_indx_entries(entries, part)
 
-    def add_from_attribute_list(self, parsed, part, offset):
+    def add_from_attribute_list(self, parsed: Dict[str, Any], part: NTFSPartition, offset: int) -> None:
         """Add additional entries to part from attributes in ATTRIBUTE_LIST.
 
         Files with many attributes may have additional attributes not in the
@@ -643,7 +644,7 @@ class NTFSScanner(DiskScanner):
                 if ads_name and len(ads_name):
                     part.add_file(NTFSFile(parsed, offset, ads=ads_name))
 
-    def add_from_mft_mirror(self, part):
+    def add_from_mft_mirror(self, part: NTFSPartition) -> None:
         """Fix the first file records using the MFT mirror."""
         img = DiskScanner.get_image(self)
         mirrpos = part.mftmirr_pos
@@ -664,7 +665,7 @@ class NTFSScanner(DiskScanner):
                         '%s from backup', node.index, node.name, part.offset
                     )
 
-    def finalize_reconstruction(self, part):
+    def finalize_reconstruction(self, part: NTFSPartition) -> None:
         """Finish information gathering from a file.
 
         This procedure requires that the beginning of the
@@ -693,9 +694,9 @@ class NTFSScanner(DiskScanner):
             parsed = self.parsed_file_review[node.offset]
             self.add_from_indx_allocation(parsed, part)
 
-    def get_partitions(self):
+    def get_partitions(self) -> Dict[int, NTFSPartition]:
         """Get a list of the found partitions."""
-        partitioned_files = {}
+        partitioned_files: Dict[int, NTFSPartition] = {}
         img = DiskScanner.get_image(self)
 
         logging.info('Parsing MFT entries')

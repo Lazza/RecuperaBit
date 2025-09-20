@@ -30,12 +30,17 @@ import pickle
 import sys
 try:
     import readline
+    readline # ignore unused import warning
 except ImportError:
     pass
 
 from recuperabit import logic, utils
 # scanners
 from recuperabit.fs.ntfs import NTFSScanner
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from recuperabit.fs.core_types import Partition
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
@@ -97,7 +102,7 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     return None
 
 
-def interpret(cmd, arguments, parts, shorthands, outdir):
+def interpret(cmd, arguments, parts: dict[int, Partition], shorthands, outdir):
     """Perform command required by user."""
     if cmd == 'help':
         print('Available commands:')
@@ -362,7 +367,7 @@ def main():
             pickle.dump(interesting, savefile)
 
     # Ask for partitions
-    parts = {}
+    parts: dict[int, Partition] = {}
     for scanner in scanners:
         parts.update(scanner.get_partitions())
 
