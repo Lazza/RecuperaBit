@@ -250,7 +250,7 @@ def interpret(cmd, arguments, parts, shorthands, outdir):
         if len(arguments) != 1:
             print('Wrong number of parameters!')
         else:
-            list_parts(parts, shorthands, lambda x: x.size is not None and x.size > arguments[0])
+            list_parts(parts, shorthands, lambda x: x.size is not None and x.size > int(arguments[0]))
     elif cmd == 'other':
         list_parts(parts, shorthands, lambda x: not x.recoverable)
     elif cmd == 'allparts':
