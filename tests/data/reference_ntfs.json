@@ -1,0 +1,20 @@
+{
+  "created_by": "build_reference_ntfs.py",
+  "file_count": 9,
+  "image_hash": "864fcb2d2e0fc0ec2620e01929246fe263c68692c5793e90e24e180d844bebd7",
+  "image_size_bytes": 104857600,
+  "notes": "Reference NTFS filesystem for RecuperaBit E2E tests",
+  "reference_files_hashes": {
+    "deep/nested/directory/deep_file.txt": "c44594d1bf12bfe9b8f85ff08d44210cb0d7976ba292434b2c50e3cc8331e53c",
+    "empty_file.empty": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "file_with_ads.txt": "674a71cd25529aa999f590bed146fc496f85f2659aa7f1bdbadbef2ca36ea8a4",
+    "large_file.dat": "3031d04fa4ca07a7794b60b8eca58afc7cc7faea73b6d47352d526e906346d02",
+    "medium_binary.bin": "334bbc577b4b8075539ee42aca3a8a71b02861507294223087cdcdc9040e0f16",
+    "small_text.txt": "a1a5e8236ce8738b882d5cbd97af29414e75407db56d1c4668d261a6d9a17091",
+    "subdirectory/subdir_file1.txt": "33008bf127acca6e47249b311652515c5803249d25db5951da9f296297c6feae",
+    "subdirectory/subdir_file2.bin": "1ee7722ccd6ef215afa901f5a8bbeaf770952f7ccf2586ebf74e841e24b46d8f",
+    "unicode_name_\u0444\u0430\u0439\u043b.txt": "cebaf880b99881b574003c8220ac3013e2830b376d2d6b3f001db6e51f449d85"
+  },
+  "size_mb": 100,
+  "version": "1.0"
+}

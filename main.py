@@ -102,7 +102,7 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     return None
 
 
-def interpret(cmd, arguments, parts: dict[int, Partition], shorthands, outdir):
+def interpret(cmd, arguments, parts: dict[int, 'Partition'], shorthands, outdir):
     """Perform command required by user."""
     if cmd == 'help':
         print('Available commands:')

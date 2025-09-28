@@ -67,8 +67,10 @@ def best_name(entries: List[Tuple[int, str]]) -> Optional[str]:
     return name if len(name) else None
 
 
-def parse_mft_attr(attr: bytes) -> Tuple[Dict[str, Any], Optional[str]]:
+def parse_mft_attr(attr: Union[bytes, bytearray]) -> Tuple[Dict[str, Any], Optional[str]]:
     """Parse the contents of a MFT attribute."""
+    assert isinstance(attr, (bytes, bytearray)), f"attr must be bytes or bytearray, got {type(attr)}"
+    
     header = unpack(attr, attr_header_fmt)
     attr_type = header['type']
 
@@ -103,7 +105,7 @@ def _apply_fixup_values(header: Dict[str, Any], entry: bytearray) -> None:
         entry[pos-2:pos] = entry[offset + 2*i:offset + 2*(i+1)]
 
 
-def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
+def _attributes_reader(entry: Union[bytes, bytearray], offset: int) -> Dict[str, Any]:
     """Read every attribute."""
     attributes = {}
     while offset < len(entry) - 16:
@@ -134,8 +136,10 @@ def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
     return attributes
 
 
-def parse_file_record(entry: bytes) -> Dict[str, Any]:
+def parse_file_record(entry: bytearray | bytes) -> Dict[str, Any]:
     """Parse the contents of a FILE record (MFT entry)."""
+    assert isinstance(entry, (bytearray, bytes)), f"entry must be bytearray or bytes, got {type(entry)}"
+
     header = unpack(entry, entry_fmt)
     if (header['size_alloc'] is None or
             header['size_alloc'] > len(entry) or
@@ -155,8 +159,10 @@ def parse_file_record(entry: bytes) -> Dict[str, Any]:
     return header
 
 
-def parse_indx_record(entry: bytes) -> Dict[str, Any]:
+def parse_indx_record(entry: bytearray | bytes) -> Dict[str, Any]:
     """Parse the contents of a INDX record (directory index)."""
+    assert isinstance(entry, (bytearray, bytes)), f"entry must be bytearray or bytes, got {type(entry)}"
+
     header = unpack(entry, indx_fmt)
 
     _apply_fixup_values(header, entry)
