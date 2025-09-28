@@ -27,6 +27,9 @@ import sys
 import time
 import types
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, Iterator, Set, TypeVar, Generic
+from concurrent.futures import ThreadPoolExecutor
+
+from recuperabit.utils import readable_bytes
 
 T = TypeVar('T')
 
@@ -208,11 +211,52 @@ def makedirs(path: str | Path) -> bool:
         return False
     return True
 
+def file_restore(node: 'File', part: 'Partition', restore_path: Path) -> int:
+    """ Restore a single file to the given path. """
+    
+    restored_bytes = 0
+    try:
+        content = node.get_content(part)
+    except NotImplementedError:
+        logging.error(u'Restore of #%s %s is not supported', node.index, restore_path)
+        content = None
+        
+    is_directory = node.is_directory or len(node.children) > 0
+
+    try:
+        if content is not None:
+            with restore_path.open('wb') as outfile:
+                if isinstance(content, types.GeneratorType):
+                    for piece in content:
+                        restored_bytes += outfile.write(piece)
+                else:
+                    restored_bytes += outfile.write(content)
+        else:
+            if not is_directory:
+                # Empty file
+                restore_path.touch()
+    except IOError:
+        logging.error(u'IOError when trying to create %s', restore_path)
+
+    try:
+        # Restore Modification + Access time
+        mtime, atime, _ = node.get_mac()
+        if mtime is not None:
+            atime = time.mktime(atime.astimezone().timetuple())
+            mtime = time.mktime(mtime.astimezone().timetuple())
+            os.utime(restore_path, (atime, mtime))
+    except IOError:
+        logging.error(u'IOError while setting atime and mtime of %s', restore_path)
+        
+    logging.info(u'Copied %s bytes to %s', readable_bytes(restored_bytes), restore_path)
+        
+    return restored_bytes
 
 def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs: bool = True) -> None:
     """Restore a directory structure starting from a file node."""
     # Use a stack for iterative depth-first traversal
     stack = [node]
+    file_copy_queue: list[tuple['File', Path]] = []
     
     while stack:
         current_node = stack.pop()
@@ -228,49 +272,20 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
             file_path = Path(parent_path) / current_node.name
             restore_path = Path(outputdir) / file_path
 
-            try:
-                content = current_node.get_content(part)
-            except NotImplementedError:
-                logging.error(u'Restore of #%s %s is not supported', current_node.index, file_path)
-                content = None
-
-            is_directory = current_node.is_directory or len(current_node.children) > 0
-
             if make_dirs:
                 restore_path.parent.mkdir(parents=True, exist_ok=True)
+                
+            is_directory = current_node.is_directory or len(current_node.children) > 0
 
             if is_directory:
                 if not makedirs(restore_path):
                     continue
 
-            if is_directory and content is not None:
+            if is_directory and current_node.size is not None and current_node.size > 0:
                 logging.warning(u'Directory %s has data content!', file_path)
                 restore_path = Path(str(restore_path) + '_recuperabit_content')
 
-            try:
-                if content is not None:
-                    with open(restore_path, 'wb') as outfile:
-                        if isinstance(content, types.GeneratorType):
-                            for piece in content:
-                                outfile.write(piece)
-                        else:
-                            outfile.write(content)
-                else:
-                    if not is_directory:
-                        # Empty file
-                        open(restore_path, 'wb').close()
-            except IOError:
-                logging.error(u'IOError when trying to create %s', restore_path)
-
-            try:
-                # Restore Modification + Access time
-                mtime, atime, _ = current_node.get_mac()
-                if mtime is not None:
-                    atime = time.mktime(atime.astimezone().timetuple())
-                    mtime = time.mktime(mtime.astimezone().timetuple())
-                    os.utime(restore_path, (atime, mtime))
-            except IOError:
-                logging.error(u'IOError while setting atime and mtime of %s', restore_path)
+            file_copy_queue.append((current_node, restore_path))
 
             # Add children to stack for processing (in reverse order to maintain depth-first traversal)
             if is_directory:
@@ -283,3 +298,12 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
 
         except Exception as e:
             logging.error(u'Error restoring #%s %s: %s', current_node.index, current_node.name, e)
+                
+    def _file_restore(tuple_item: tuple['File', Path]) -> int:
+        node, path = tuple_item
+        return file_restore(node, part, path)
+
+    # Process file copy queue with a ThreadPool, using 4 threads (more threads hurt performance on most storage devices)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        restored_bytes = sum(executor.map(_file_restore, file_copy_queue))
+        logging.info(u'Total restored bytes: %s', readable_bytes(restored_bytes))
