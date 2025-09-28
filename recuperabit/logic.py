@@ -20,14 +20,13 @@
 
 
 import bisect
-import codecs
 import logging
 import os
-import os.path
+from pathlib import Path
 import sys
 import time
 import types
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Iterator, Set, Tuple, TypeVar, Generic
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, Iterator, Set, TypeVar, Generic
 
 T = TypeVar('T')
 
@@ -196,81 +195,91 @@ def approximate_matching(records: SparseList[T], pattern: SparseList[T], stop: i
         return None
 
 
-def makedirs(path: str) -> bool:
+def makedirs(path: str | Path) -> bool:
     """Make directories if they do not exist."""
+    path = Path(path)
     try:
-        os.makedirs(path)
+        path.mkdir(parents=True, exist_ok=True)
+    except FileExistsError:
+        logging.error(f"makedirs: {path} already exists and is not a directory")
     except OSError:
         _, value, _ = sys.exc_info()
-        # The directory already exists = no problem
-        if value.errno != 17:
-            logging.error(value)
-            return False
+        logging.error(value)
+        return False
     return True
 
 
 def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs: bool = True) -> None:
     """Restore a directory structure starting from a file node."""
-    parent_path = str(
-        part[node.parent].full_path(part) if node.parent is not None
-        else ''
-    )
+    # Use a stack for iterative depth-first traversal
+    stack = [node]
+    
+    while stack:
+        current_node = stack.pop()
+        
+        logging.info(u'Restoring #%s %s', current_node.index, current_node.name)
+        
+        try:
+            parent_path = str(
+                part[current_node.parent].full_path(part) if current_node.parent is not None
+                else ''
+            )
 
-    file_path = os.path.join(parent_path, node.name)
-    restore_parent_path = os.path.join(outputdir, parent_path)
-    restore_path = os.path.join(outputdir, file_path)
+            file_path = Path(parent_path) / current_node.name
+            restore_path = Path(outputdir) / file_path
 
-    try:
-        content = node.get_content(part)
-    except NotImplementedError:
-        logging.error(u'Restore of #%s %s is not supported', node.index,
-                      file_path)
-        content = None
+            try:
+                content = current_node.get_content(part)
+            except NotImplementedError:
+                logging.error(u'Restore of #%s %s is not supported', current_node.index, file_path)
+                content = None
 
-    if make_dirs:
-        if not makedirs(restore_parent_path):
-            return
+            is_directory = current_node.is_directory or len(current_node.children) > 0
 
-    is_directory = node.is_directory or len(node.children) > 0
+            if make_dirs:
+                restore_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if is_directory:
-        logging.info(u'Restoring #%s %s', node.index, file_path)
-        if not makedirs(restore_path):
-            return
+            if is_directory:
+                if not makedirs(restore_path):
+                    continue
 
-    if is_directory and content is not None:
-        logging.warning(u'Directory %s has data content!', file_path)
-        restore_path += '_recuperabit_content'
+            if is_directory and content is not None:
+                logging.warning(u'Directory %s has data content!', file_path)
+                restore_path = Path(str(restore_path) + '_recuperabit_content')
 
-    try:
-        if content is not None:
-            logging.info(u'Restoring #%s %s', node.index, file_path)
-            with codecs.open(restore_path, 'wb') as outfile:
-                if isinstance(content, types.GeneratorType):
-                    for piece in content:
-                        outfile.write(piece)
+            try:
+                if content is not None:
+                    with open(restore_path, 'wb') as outfile:
+                        if isinstance(content, types.GeneratorType):
+                            for piece in content:
+                                outfile.write(piece)
+                        else:
+                            outfile.write(content)
                 else:
-                    outfile.write(content)
-        else:
-            if not is_directory:
-                # Empty file
-                open(restore_path, 'wb').close()
-    except IOError:
-        logging.error(u'IOError when trying to create %s', restore_path)
+                    if not is_directory:
+                        # Empty file
+                        open(restore_path, 'wb').close()
+            except IOError:
+                logging.error(u'IOError when trying to create %s', restore_path)
 
-    try:
-        # Restore Modification + Access time
-        mtime, atime, _ = node.get_mac()
-        if mtime is not None:
-            atime = time.mktime(atime.astimezone().timetuple())
-            mtime = time.mktime(mtime.astimezone().timetuple())
-            os.utime(restore_path, (atime, mtime))
-    except IOError:
-        logging.error(u'IOError while setting atime and mtime of %s', restore_path)
+            try:
+                # Restore Modification + Access time
+                mtime, atime, _ = current_node.get_mac()
+                if mtime is not None:
+                    atime = time.mktime(atime.astimezone().timetuple())
+                    mtime = time.mktime(mtime.astimezone().timetuple())
+                    os.utime(restore_path, (atime, mtime))
+            except IOError:
+                logging.error(u'IOError while setting atime and mtime of %s', restore_path)
 
-    if is_directory:
-        for child in node.children:
-            if not child.ignore():
-                recursive_restore(child, part, outputdir, make_dirs=False)
-            else:
-                logging.info(u'Skipping ignored file {}'.format(child))
+            # Add children to stack for processing (in reverse order to maintain depth-first traversal)
+            if is_directory:
+                for child in current_node.children:
+                    if not child.ignore():
+                        logging.info(u'Adding child file %s to stack', child.name)
+                        stack.append(child)
+                    else:
+                        logging.info(u'Skipping ignored file %s', child.name)
+
+        except Exception as e:
+            logging.error(u'Error restoring #%s %s: %s', current_node.index, current_node.name, e)
