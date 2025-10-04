@@ -330,28 +330,26 @@ class NTFSFile(File):
                 '{}'.format(offset, size))
             dump += bytearray(b'\x00' * (size - len(dump)))
         return dump
-
-    def content_iterator(self, partition, image, datas):
-        """Return an iterator for the contents of this file."""
+    
+    def parse_data(self, partition, datas):
         vcn = 0
         spc = partition.sec_per_clus
+        
+        output = [] # (vcn start, vcn end, sector offset (-1 if empty))
         for attr in datas:
             diff = attr['start_VCN'] - vcn
             if diff > 0:
-                # We do not try to fill with zeroes as this might produce huge useless files
                 logging.warning(
                     u'Missing part for {}, {} clusters skipped'.format(self, diff)
                 )
-                vcn += diff
-                yield b''
-
+                output.append((vcn, attr['start_VCN'], -1))
+                
+            vcn = attr['start_VCN']
             clusters_pos = 0
             size = attr['real_size']
 
             if 'runlist' not in attr:
-                logging.error(
-                    u'Cannot restore {}, missing runlist'.format(self)
-                )
+                raise ValueError(u'Cannot restore {}, missing runlist'.format(self))
                 break
 
             for entry in attr['runlist']:
@@ -359,40 +357,35 @@ class NTFSFile(File):
                 size -= length
                 # Sparse runlist
                 if entry['offset'] is None:
-                    while length > 0:
-                        amount = min(max_sectors*sector_size, length)
-                        length -= amount
-                        yield b'\x00' * amount
-                    continue
-                # Normal runlists
-                clusters_pos += entry['offset']
-                real_pos = clusters_pos * spc + partition.offset
-                # Avoid to fill memory with huge blocks
-                offset = 0
-                while length > 0:
-                    amount = min(max_sectors*sector_size, length)
-                    position = real_pos*sector_size + offset
-                    partial = self._padded_bytes(image, position, amount)
-                    length -= amount
-                    offset += amount
-                    yield bytes(partial)
+                    output.append((vcn, vcn+entry['length'], -1))
+                else:
+                    # Normal runlists
+                    clusters_pos += entry['offset']
+                    real_pos = clusters_pos * spc + partition.offset
+                    output.append((vcn, vcn+entry['length'], real_pos))
+                vcn += entry['length']
+            if vcn != attr['end_VCN'] + 1:
+                logging.error("VCN miscalcuation! {} {}".format(vcn, attr['end_VCN'] + 1))
             vcn = attr['end_VCN'] + 1
-
-    def get_content(self, partition):
-        """Extract the content of the file.
+        return output
+    
+    def open(self, partition):
+        """Opens the file and get the sector locations of the file.
 
         This method works by extracting the $DATA attribute."""
+        if self.isopen:
+            logging.warning(u'Tried to open already open file {}!'.format(self))
+            return # already open!
+            
         if self.is_ghost:
-            logging.error(u'Cannot restore ghost file {}'.format(self))
-            return None
+            raise ValueError(u'Cannot open ghost file {}'.format(self))
 
         image = DiskScanner.get_image(partition.scanner)
         dump = sectors(image, File.get_offset(self), FILE_size)
         parsed = parse_file_record(dump)
 
         if not parsed['valid'] or 'attributes' not in parsed:
-            logging.error(u'Invalid MFT entry for {}'.format(self))
-            return None
+            raise ValueError(u'Invalid MFT entry for {}'.format(self))
         attrs = parsed['attributes']
         if ('$ATTRIBUTE_LIST' in attrs and
                 partition.sec_per_clus is not None):
@@ -402,32 +395,30 @@ class NTFSFile(File):
         datas = [d for d in attrs['$DATA'] if d['name'] == self.ads]
         if not len(datas):
             if not self.is_directory:
-                logging.error(u'Cannot restore $DATA attribute(s) '
+                raise ValueError(u'Cannot restore $DATA attribute(s) '
                               'for {}'.format(self))
-            return None
 
         # TODO implemented compressed attributes
         for d in datas:
             if d['flags'] & 0x01:
-                logging.error(u'Cannot restore compressed $DATA attribute(s) '
+                raise ValueError(u'Cannot restore compressed $DATA attribute(s) '
                               'for {}'.format(self))
-                return None
             elif d['flags'] & 0x4000:
                 logging.warning(u'Found encrypted $DATA attribute(s) '
                                 'for {}'.format(self))
-
+        self.isopen = True
         # Handle resident file content
         if len(datas) == 1 and not datas[0]['non_resident']:
             single = datas[0]
             start = single['dump_offset'] + single['content_off']
             end = start + single['content_size']
-            content = dump[start:end]
-            return bytes(content)
+            self.resident = True
+            self.content = dump[start:end]
+            return
         else:
             if partition.sec_per_clus is None:
-                logging.error(u'Cannot restore non-resident $DATA '
+                raise ValueError(u'Cannot restore non-resident $DATA '
                               'attribute(s) for {}'.format(self))
-                return None
             non_resident = sorted(
                 (d for d in attrs['$DATA'] if d['non_resident']),
                 key=lambda x: x['start_VCN']
@@ -437,7 +428,77 @@ class NTFSFile(File):
                     u'Found leftover resident $DATA attributes for '
                     '{}'.format(self)
                 )
-            return self.content_iterator(partition, image, non_resident)
+            self.resident = False
+            self.content = self.parse_data(partition, non_resident)
+            return
+    
+    def content_iterator(self, partition, image, datas):
+        """Return an iterator for the contents of this file."""
+        
+        spc = partition.sec_per_clus
+        bpc = sector_size*spc # bytes per cluster
+        
+        curlen = 0
+        for attr in self.content:
+            (attr_start, attr_end, sectoroff) = attr
+            curoff = (attr_end - attr_start) * bpc
+            length = min(self.size - curlen, curoff)
+            
+            if length <= 0:
+                break
+            if sectoroff == -1:
+                yield '\x00' * length;
+            else:
+                yield self._padded_bytes(image, sectoroff*sector_size, length)
+                
+    def get_content(self, partition):
+        """Extract the entire content of the file."""
+        self.open(partition)
+        assert self.isopen
+        if self.resident:
+            return bytes(self.content) # typecast from bytearray -> bytes
+        else:
+            image = DiskScanner.get_image(partition.scanner)
+            return self.content_iterator(partition, image, self.content)
+        
+    # TODO it can technically read off the end of the file a bit....
+    def read(self, partition, roffset, rsize):
+        if not self.isopen:
+            raise RuntimeError("tried to read file that wasn't open!")
+        if self.resident:
+            trim = self.content[roffset:roffset+rsize]
+            return bytes(trim) # typecast from bytearray -> bytes
+        
+        image = DiskScanner.get_image(partition.scanner)
+        spc = partition.sec_per_clus
+        bpc = sector_size*spc # bytes per cluster
+        
+        start_vcn = roffset // bpc
+        offset_startvcn = roffset % bpc
+        end_vcn = (roffset+rsize) // bpc
+        
+        value = bytearray()
+        for attr in self.content:
+            (attr_start, attr_end, sectoroff) = attr
+            vcn_off = 0
+            if start_vcn > attr_end:
+                continue
+            elif start_vcn >= attr_start:
+                vcn_off = start_vcn - attr_start
+                
+            
+            length = attr_end - (attr_start + vcn_off)
+            offset = sectoroff + (spc*vcn_off)
+            if sectoroff == -1:
+                value.extend('\x00' * bpc * length)
+            else:
+                value.extend(self._padded_bytes(image, offset*sector_size, length*bpc))
+                
+            if end_vcn < attr_end:
+                break
+        
+        trim = value[offset_startvcn:offset_startvcn+rsize]
+        return bytes(trim) # typecast from bytearray -> bytes
 
     def ignore(self):
         """Determine which files should be ignored."""
