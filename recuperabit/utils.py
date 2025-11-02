@@ -25,7 +25,7 @@ import pprint
 import string
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Optional, List, Dict, Tuple, Union, Callable
+from typing import TYPE_CHECKING, Any, Iterable, Optional, List, Dict, Tuple, Union, Callable
 import unicodedata
 import io
 
@@ -66,14 +66,14 @@ def sectors(image: io.BufferedReader, offset: int, size: int, bsize: int = secto
             return None
     return bytearray(dump)
 
-def unixtime(dtime: Optional[datetime]) -> int:
+def unixtime(dtime: Optional[datetime]) -> float:
     """Convert datetime to UNIX epoch."""
     if dtime is None:
-        return 0
+        return 0.0
     try:
         return time.mktime(dtime.timetuple())
     except ValueError:
-        return 0
+        return 0.0
 
 
 # format:
@@ -118,7 +118,7 @@ def unpack(data: bytes, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], 
     return result
 
 
-def feed_all(image: io.BufferedReader, scanners: List[Any], indexes: List[int]) -> List[int]:
+def feed_all(image: io.BufferedReader, scanners: List[Any], indexes: Iterable[int]) -> List[int]:
     # Scan the disk image and feed the scanners
     interesting: List[int] = []
     for index in indexes:

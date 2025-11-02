@@ -102,7 +102,7 @@ def check_valid_part(num, parts, shorthands, rebuild=True):
     return None
 
 
-def interpret(cmd, arguments, parts: dict[int, Partition], shorthands, outdir):
+def interpret(cmd, arguments, parts: dict[int, 'Partition'], shorthands, outdir):
     """Perform command required by user."""
     if cmd == 'help':
         print('Available commands:')
@@ -367,7 +367,7 @@ def main():
             pickle.dump(interesting, savefile)
 
     # Ask for partitions
-    parts: dict[int, Partition] = {}
+    parts: dict[int, 'Partition'] = {}
     for scanner in scanners:
         parts.update(scanner.get_partitions())
 
