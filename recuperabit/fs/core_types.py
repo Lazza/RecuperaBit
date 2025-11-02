@@ -248,10 +248,6 @@ class DiskScanner(object):
     def __init__(self, pointer: Any) -> None:
         self.image: Any = pointer
 
-    def get_image(self) -> Any:
-        """Return the image reference."""
-        return self.image
-
     @staticmethod
     def get_image(scanner: 'DiskScanner') -> Any:
         """Static method to get image from scanner instance."""
