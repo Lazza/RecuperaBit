@@ -115,8 +115,8 @@ def interpret(cmd, arguments, parts: dict[int, 'Partition'], shorthands, outdir)
             part = check_valid_part(arguments[0], parts, shorthands)
             if part is not None:
                 print('-'*10)
-                print(utils.tree_folder(part.root))
-                print(utils.tree_folder(part.lost))
+                print(utils.tree_folder(part.root, sector_size=part.sector_size))
+                print(utils.tree_folder(part.lost, sector_size=part.sector_size))
                 print('-'*10)
     elif cmd == 'bodyfile':
         if len(arguments) != 2:

@@ -28,8 +28,6 @@ import os.path
 from typing import Optional, Dict, Set, List, Tuple, Union, Any, Iterator
 from datetime import datetime
 
-from .constants import sector_size
-
 from ..utils import readable_bytes
 
 
@@ -140,6 +138,7 @@ class Partition(object):
         self.files: Dict[Union[int, str], File] = {}
         self.recoverable: bool = False
         self.scanner: 'DiskScanner' = scanner
+        self.sector_size: int = 512  # Default sector size, can be overridden
 
     def add_file(self, node: File) -> None:
         """Insert a new file in the partition."""
@@ -209,14 +208,14 @@ class Partition(object):
 
     def __repr__(self) -> str:
         size = (
-            readable_bytes(self.size * sector_size)
+            readable_bytes(self.size * self.sector_size)
             if self.size is not None else '??? b'
         )
         data = [
             ('Offset', self.offset),
             (
                 'Offset (b)',
-                self.offset * sector_size
+                self.offset * self.sector_size
                 if self.offset is not None else None
             ),
         ]
@@ -248,10 +247,6 @@ class DiskScanner(object):
     """Abstract stub for the implementation of disk scanners."""
     def __init__(self, pointer: Any) -> None:
         self.image: Any = pointer
-
-    def get_image(self) -> Any:
-        """Return the image reference."""
-        return self.image
 
     @staticmethod
     def get_image(scanner: 'DiskScanner') -> Any:
