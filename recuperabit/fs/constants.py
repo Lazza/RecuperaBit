@@ -19,5 +19,4 @@
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
 
-sector_size: int = 512
 max_sectors: int = 256   # Maximum block size for recovery

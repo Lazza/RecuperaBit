@@ -26,7 +26,7 @@ import logging
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple, Union, Iterator, Set
 
-from .constants import max_sectors, sector_size
+from .constants import max_sectors
 from .core_types import DiskScanner, File, Partition
 from .ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
                       attr_resident_fmt, attr_types_fmt, attribute_list_parser,
@@ -95,7 +95,7 @@ def parse_mft_attr(attr: bytes) -> Tuple[Dict[str, Any], Optional[str]]:
     return header, name
 
 
-def _apply_fixup_values(header: Dict[str, Any], entry: bytearray) -> None:
+def _apply_fixup_values(header: Dict[str, Any], entry: bytearray, sector_size: int) -> None:
     """Apply the fixup values to FILE and INDX records."""
     offset = header['off_fixup']
     for i in range(1, header['n_entries']):
@@ -134,7 +134,7 @@ def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
     return attributes
 
 
-def parse_file_record(entry: bytes) -> Dict[str, Any]:
+def parse_file_record(entry: bytes, sector_size: int) -> Dict[str, Any]:
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
     if (header['size_alloc'] is None or
@@ -147,7 +147,7 @@ def parse_file_record(entry: bytes) -> Dict[str, Any]:
     if header['off_fixup'] < 48:
         header['record_n'] = None
 
-    _apply_fixup_values(header, entry)
+    _apply_fixup_values(header, entry, sector_size)
 
     attributes = _attributes_reader(entry, header['off_first'])
     header['valid'] = True
@@ -155,11 +155,11 @@ def parse_file_record(entry: bytes) -> Dict[str, Any]:
     return header
 
 
-def parse_indx_record(entry: bytes) -> Dict[str, Any]:
+def parse_indx_record(entry: bytes, sector_size: int) -> Dict[str, Any]:
     """Parse the contents of a INDX record (directory index)."""
     header = unpack(entry, indx_fmt)
 
-    _apply_fixup_values(header, entry)
+    _apply_fixup_values(header, entry, sector_size)
 
     node_data = unpack(entry[24:], indx_header_fmt)
     node_data['off_start_list'] += 24
@@ -214,7 +214,7 @@ def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', ima
         size = attr['real_size']
         for entry in attr['runlist']:
             clusters_pos += entry['offset']
-            length = min(entry['length'] * spc * sector_size, size)
+            length = min(entry['length'] * spc * part.sector_size, size)
             size -= length
             real_pos = clusters_pos * spc + part.offset
             dump = sectors(image, real_pos, length, 1)
@@ -247,7 +247,7 @@ def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', ima
         for index in entries_by_type[num]:
             real_pos = mft_pos + index * FILE_size
             dump = sectors(image, real_pos, FILE_size)
-            child_parsed = parse_file_record(dump)
+            child_parsed = parse_file_record(dump, part.sector_size)
             if 'attributes' not in child_parsed:
                 continue
             # Update the main entry (parsed)
@@ -356,12 +356,12 @@ class NTFSFile(File):
                 break
 
             for entry in attr['runlist']:
-                length = min(entry['length'] * spc * sector_size, size)
+                length = min(entry['length'] * spc * partition.sector_size, size)
                 size -= length
                 # Sparse runlist
                 if entry['offset'] is None:
                     while length > 0:
-                        amount = min(max_sectors*sector_size, length)
+                        amount = min(max_sectors*partition.sector_size, length)
                         length -= amount
                         yield b'\x00' * amount
                     continue
@@ -371,8 +371,8 @@ class NTFSFile(File):
                 # Avoid to fill memory with huge blocks
                 offset = 0
                 while length > 0:
-                    amount = min(max_sectors*sector_size, length)
-                    position = real_pos*sector_size + offset
+                    amount = min(max_sectors*partition.sector_size, length)
+                    position = real_pos*partition.sector_size + offset
                     partial = self._padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
@@ -389,7 +389,7 @@ class NTFSFile(File):
 
         image = DiskScanner.get_image(partition.scanner)
         dump = sectors(image, File.get_offset(self), FILE_size)
-        parsed = parse_file_record(dump)
+        parsed = parse_file_record(dump, partition.sector_size)
 
         if not parsed['valid'] or 'attributes' not in parsed:
             logging.error(u'Invalid MFT entry for {}'.format(self))
@@ -623,7 +623,7 @@ class NTFSScanner(DiskScanner):
         img = DiskScanner.get_image(self)
         for position in read_again:
             dump = sectors(img, position, INDX_size)
-            entries = parse_indx_record(dump)['entries']
+            entries = parse_indx_record(dump, part.sector_size)['entries']
             self.add_indx_entries(entries, part)
 
     def add_from_attribute_list(self, parsed: Dict[str, Any], part: NTFSPartition, offset: int) -> None:
@@ -656,7 +656,7 @@ class NTFSScanner(DiskScanner):
             if node is None or node.is_ghost:
                 position = mirrpos + i * FILE_size
                 dump = sectors(img, position, FILE_size)
-                parsed = parse_file_record(dump)
+                parsed = parse_file_record(dump, part.sector_size)
                 if parsed['valid'] and '$FILE_NAME' in parsed['attributes']:
                     node = NTFSFile(parsed, position)
                     part.add_file(node)
@@ -702,7 +702,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Parsing MFT entries')
         for position in self.found_file:
             dump = sectors(img, position, FILE_size)
-            parsed = parse_file_record(dump)
+            parsed = parse_file_record(dump, 512)  # Default sector size during discovery
             attrs = parsed.get('attributes', {})
             if not parsed['valid'] or '$FILE_NAME' not in attrs:
                 continue
@@ -737,7 +737,7 @@ class NTFSScanner(DiskScanner):
         logging.info('Parsing INDX records')
         for position in self.found_indx:
             dump = sectors(img, position, INDX_size)
-            parsed = parse_indx_record(dump)
+            parsed = parse_indx_record(dump, 512)  # Default sector size during discovery
             if not parsed['valid']:
                 continue
 
@@ -793,7 +793,7 @@ class NTFSScanner(DiskScanner):
                 else:
                     # Infer MFT mirror position
                     dump = sectors(img, entry.offset, FILE_size)
-                    mirror = parse_file_record(dump)
+                    mirror = parse_file_record(dump, part.sector_size)
                     if (mirror['valid'] and 'attributes' in mirror and
                             '$DATA' in mirror['attributes']):
                         datas = mirror['attributes']['$DATA']
@@ -856,7 +856,7 @@ class NTFSScanner(DiskScanner):
             if entry is None or part.sec_per_clus is None:
                 continue
             dump = sectors(img, entry.offset, FILE_size)
-            parsed = parse_file_record(dump)
+            parsed = parse_file_record(dump, part.sector_size)
             if not parsed['valid'] or 'attributes' not in parsed:
                 continue
 
