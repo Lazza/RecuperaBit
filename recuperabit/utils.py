@@ -78,7 +78,7 @@ def unixtime(dtime: Optional[datetime]) -> float:
 
 # format:
 # [(label, (formatter, lower, higher)), ...]
-def unpack(data: bytes, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], Any]], Union[int, Callable[[Dict[str, Any]], Optional[int]]], Union[int, Callable[[Dict[str, Any]], Optional[int]]]]]]) -> Dict[str, Any]:
+def unpack(data: bytes | bytearray, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], Any]], Union[int, Callable[[Dict[str, Any]], Optional[int]]], Union[int, Callable[[Dict[str, Any]], Optional[int]]]]]]) -> Dict[str, Any]:
     """Extract formatted information from a string of bytes."""
     result: Dict[str, Any] = {}
     for label, description in fmt:
