@@ -27,6 +27,7 @@ import locale
 import logging
 import os.path
 import pickle
+import shlex
 import sys
 try:
     import readline
@@ -377,10 +378,12 @@ def main():
     while True:
         print('\nWrite command ("help" for details):')
         try:
-            command = input('> ').split(' ')
+            command = shlex.split(input('> ').strip())
         except (EOFError, KeyboardInterrupt):
             print('')
             exit(0)
+        if len(command) == 0:
+            continue
         cmd = command[0]
         arguments = command[1:]
         interpret(cmd, arguments, parts, shorthands, args.outputdir)
