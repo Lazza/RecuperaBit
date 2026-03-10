@@ -341,10 +341,22 @@ class NTFSFile(File):
             if diff > 0:
                 # We do not try to fill with zeroes as this might produce huge useless files
                 logging.warning(
-                    u'Missing part for {}, {} clusters skipped'.format(self, diff)
+                    u'Missing part for {} expected VCN {}, '
+                    u'got start_VCN={} ({} clusters skipped). '.format(
+                        self, vcn, attr['start_VCN'], diff,
+                    )
                 )
                 vcn += diff
                 yield b''
+            elif diff < 0:
+                # VCN went backwards: overlap, out-of-order, or cross-stream contamination
+                logging.warning(
+                    u'$DATA attribute VCN overlap for {}. '
+                    u'expected VCN {}, got start_VCN={}. '
+                    u'This may indicate attribute filtering error or MFT corruption.'.format(
+                        self, vcn, attr['start_VCN']
+                    )
+                )
 
             clusters_pos = 0
             size = attr['real_size']
@@ -430,13 +442,13 @@ class NTFSFile(File):
                               'attribute(s) for {}'.format(self))
                 return None
             non_resident = sorted(
-                (d for d in attrs['$DATA'] if d['non_resident']),
+                (d for d in datas if d['non_resident']),
                 key=lambda x: x['start_VCN']
             )
             if len(non_resident) != len(datas):
                 logging.warning(
                     u'Found leftover resident $DATA attributes for '
-                    '{}'.format(self)
+                    '{}. Only those non-resident parts will be restored.'.format(self)
                 )
             return self.content_iterator(partition, image, non_resident)
 
