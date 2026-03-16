@@ -25,11 +25,11 @@ import pprint
 import string
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Iterable, Optional, List, Dict, Tuple, Union, Callable
+from typing import TYPE_CHECKING, Any, Iterable, Optional, List, Dict, Sequence, Tuple, Union, Callable
 import unicodedata
 import io
 
-from .fs.constants import sector_size
+from recuperabit.fs.core_types import DiskScanner
 
 printer: pprint.PrettyPrinter = pprint.PrettyPrinter(indent=4)
 all_chars = (chr(i) for i in range(sys.maxunicode))
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from .fs.core_types import File, Partition
 
 
-def sectors(image: io.BufferedReader, offset: int, size: int, bsize: int = sector_size, fill: bool = True) -> Optional[bytearray]:
+def sectors(image: io.BufferedReader, offset: int, size: int, bsize: int = 512, fill: bool = True) -> Optional[bytearray]:
     """Read from a file descriptor."""
     read = True
     try:
@@ -118,7 +118,7 @@ def unpack(data: bytes, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], 
     return result
 
 
-def feed_all(image: io.BufferedReader, scanners: List[Any], indexes: Iterable[int]) -> List[int]:
+def feed_all(image: io.BufferedReader, scanners: Sequence['DiskScanner'], indexes: Iterable[int]) -> List[int]:
     # Scan the disk image and feed the scanners
     interesting: List[int] = []
     for index in indexes:
@@ -160,7 +160,7 @@ def readable_bytes(amount: Optional[int]) -> str:
     return '%.2f %sB' % (scaled, powers[biggest])
 
 
-def _file_tree_repr(node: 'File') -> str:
+def _file_tree_repr(node: 'File', sector_size: int) -> str:
     """Give a nice representation for the tree."""
     desc = (
         ' [GHOST]' if node.is_ghost else
@@ -184,21 +184,23 @@ def _file_tree_repr(node: 'File') -> str:
     )
 
 
-def tree_folder(directory: 'File', padding: int = 0) -> str:
+def tree_folder(directory: 'File', padding: int = 0, sector_size: int | None = None) -> str:
     """Return a tree-like textual representation of a directory."""
+    assert sector_size is not None, "sector_size must be provided"
+    
     lines: List[str] = []
     pad = ' ' * padding
     lines.append(
-        pad + _file_tree_repr(directory)
+        pad + _file_tree_repr(directory, sector_size)
     )
     padding = padding + 2
     pad = ' ' * padding
     for entry in directory.children:
         if len(entry.children) or entry.is_directory:
-            lines.append(tree_folder(entry, padding))
+            lines.append(tree_folder(entry, padding, sector_size))
         else:
             lines.append(
-                pad + _file_tree_repr(entry)
+                pad + _file_tree_repr(entry, sector_size)
             )
     return '\n'.join(lines)
 
@@ -309,7 +311,7 @@ def csv_part(part: 'Partition') -> list[str]:
                     obj.mac['modification'], obj.mac['access'],
                     obj.mac['creation'], obj.size,
                     readable_bytes(obj.size),
-                    (obj.offset * sector_size
+                    (obj.offset * part.sector_size
                      if obj.offset is not None else None),
                     obj.offset,
                     '1' if obj.is_directory else '',
