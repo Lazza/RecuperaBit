@@ -29,17 +29,21 @@ import pickle
 import sys
 from typing import TYPE_CHECKING
 
-from .recuperabit import logic, utils
-from .recuperabit.fs.ntfs import NTFSScanner
+from . import logic
+from . import utils
+
+from .fs.ntfs import NTFSScanner
+
 try:
     import readline
-    readline # ignore unused import warning
+
+    readline  # ignore unused import warning
 except ImportError:
     pass
 
 
 if TYPE_CHECKING:
-    from .recuperabit.fs.core_types import Partition
+    from .fs.core_types import Partition
 
 __author__ = "Andrea Lazzarotto"
 __copyright__ = "(c) 2014-present, Andrea Lazzarotto"

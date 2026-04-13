@@ -1,0 +1,18 @@
+[project]
+name = "RecuperaBit"
+version = "1.1.6"
+description = "Reconstruct file system structures and recover files from damaged NTFS volumes."
+readme = "README.md"
+authors = [
+    { name = "Andrea Lazzarotto", email = "andrea.lazzarotto@gmail.com" },
+]
+license = "GPL-3.0-or-later"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+recuperabit = "recuperabit.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
