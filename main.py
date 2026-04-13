@@ -2,7 +2,7 @@
 """Main RecuperaBit process."""
 
 # RecuperaBit
-# Copyright 2014-2021 Andrea Lazzarotto
+# Copyright 2014-present Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -23,30 +23,28 @@
 import argparse
 import codecs
 import itertools
-import locale
 import logging
 import os.path
 import pickle
 import sys
+from typing import TYPE_CHECKING
+
+from .recuperabit import logic, utils
+from .recuperabit.fs.ntfs import NTFSScanner
 try:
     import readline
     readline # ignore unused import warning
 except ImportError:
     pass
 
-from recuperabit import logic, utils
-# scanners
-from recuperabit.fs.ntfs import NTFSScanner
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from recuperabit.fs.core_types import Partition
+    from .recuperabit.fs.core_types import Partition
 
 __author__ = "Andrea Lazzarotto"
-__copyright__ = "(c) 2014-2021, Andrea Lazzarotto"
-__license__ = "GPLv3"
+__copyright__ = "(c) 2014-present, Andrea Lazzarotto"
+__license__ = "GPL-3.0-or-later"
 __version__ = "1.1.6"
-__maintainer__ = "Andrea Lazzarotto"
 __email__ = "andrea.lazzarotto@gmail.com"
 
 
@@ -274,9 +272,9 @@ def main():
     print(r"    | _ \___ __ _  _ _ __  ___ _ _ __ _| _ |_) |_ ")
     print(r"    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|")
     print(r"    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|")
-    print("                    |_|   v{}".format(__version__))
+    print(r"                    |_|   v" + __version__)
     print('   ', __copyright__, '<%s>' % __email__)
-    print('    Released under the', __license__)
+    print('    License: %s' % __license__)
     print('')
 
     parser = argparse.ArgumentParser(
