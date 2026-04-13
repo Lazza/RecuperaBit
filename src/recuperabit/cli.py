@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 
 from . import logic
 from . import utils
-
+from . import __copyright__, __license__, __version__, __website__
 from .fs.ntfs import NTFSScanner
 
 try:
@@ -45,11 +45,7 @@ except ImportError:
 if TYPE_CHECKING:
     from .fs.core_types import Partition
 
-__author__ = "Andrea Lazzarotto"
-__copyright__ = "(c) 2014-present, Andrea Lazzarotto"
-__license__ = "GPL-3.0-or-later"
-__version__ = "1.1.6"
-__email__ = "andrea.lazzarotto@gmail.com"
+
 
 
 # classes of available scanners
@@ -277,8 +273,9 @@ def main():
     print(r"    |   / -_) _| || | '_ \/ -_) '_/ _` | _ \ |  _|")
     print(r"    |_|_\___\__|\_,_| .__/\___|_| \__,_|___/_|\__|")
     print(r"                    |_|   v" + __version__)
-    print('   ', __copyright__, '<%s>' % __email__)
+    print('   ', __copyright__)
     print('    License: %s' % __license__)
+    print('    Website: %s' % __website__)
     print('')
 
     parser = argparse.ArgumentParser(
