@@ -5,7 +5,7 @@ the Recuperabit meta file system. Each plug-in is supposed to extend the File
 and DiskScanner classes with subclasses implementing the missing methods."""
 
 # RecuperaBit
-# Copyright 2014-2021 Andrea Lazzarotto
+# Copyright 2014-present Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -22,7 +22,6 @@ and DiskScanner classes with subclasses implementing the missing methods."""
 # You should have received a copy of the GNU General Public License
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
-
 import logging
 import os.path
 from typing import Optional, Dict, Set, List, Tuple, Union, Any, Iterator
@@ -35,8 +34,16 @@ from ..utils import readable_bytes
 
 class File(object):
     """Filesystem-independent representation of a file. Aka Node."""
-    def __init__(self, index: Union[int, str], name: str, size: Optional[int], is_directory: bool = False,
-                 is_deleted: bool = False, is_ghost: bool = False) -> None:
+
+    def __init__(
+        self,
+        index: Union[int, str],
+        name: str,
+        size: Optional[int],
+        is_directory: bool = False,
+        is_deleted: bool = False,
+        is_ghost: bool = False,
+    ) -> None:
         self.index: Union[int, str] = index
         self.name: str = name
         self.size: Optional[int] = size
@@ -45,27 +52,32 @@ class File(object):
         self.is_ghost: bool = is_ghost
         self.parent: Optional[Union[int, str]] = None
         self.mac: Dict[str, Optional[datetime]] = {
-            'modification': None,
-            'access': None,
-            'creation': None
+            "modification": None,
+            "access": None,
+            "creation": None,
         }
-        self.children: Set['File'] = set()
-        self.children_names: Set[str] = set()     # Avoid name clashes breaking restore
+        self.children: Set["File"] = set()
+        self.children_names: Set[str] = set()  # Avoid name clashes breaking restore
         self.offset: Optional[int] = None  # Offset from beginning of disk
 
     def set_parent(self, parent: Optional[Union[int, str]]) -> None:
         """Set a pointer to the parent directory."""
         self.parent = parent
 
-    def set_mac(self, modification: Optional[datetime], access: Optional[datetime], creation: Optional[datetime]) -> None:
+    def set_mac(
+        self,
+        modification: Optional[datetime],
+        access: Optional[datetime],
+        creation: Optional[datetime],
+    ) -> None:
         """Set the modification, access and creation times."""
-        self.mac['modification'] = modification
-        self.mac['access'] = access
-        self.mac['creation'] = creation
+        self.mac["modification"] = modification
+        self.mac["access"] = access
+        self.mac["creation"] = creation
 
     def get_mac(self) -> List[Optional[datetime]]:
         """Get the modification, access and creation times."""
-        keys = ('modification', 'access', 'creation')
+        keys = ("modification", "access", "creation")
         return [self.mac[k] for k in keys]
 
     def set_offset(self, offset: Optional[int]) -> None:
@@ -76,7 +88,7 @@ class File(object):
         """Get the offset of the file record with respect to the disk image."""
         return self.offset
 
-    def add_child(self, node: 'File') -> None:
+    def add_child(self, node: "File") -> None:
         """Add a new child to this directory."""
         original_name = node.name
         i = 0
@@ -85,14 +97,14 @@ class File(object):
             return
         # Avoid name clashes
         while node.name in self.children_names:
-            node.name = original_name + '_%03d' % i
+            node.name = original_name + "_%03d" % i
             i += 1
         if node.name != original_name:
-            logging.warning(u'Renamed {} from {}'.format(node, original_name))
+            logging.warning("Renamed {} from {}".format(node, original_name))
         self.children.add(node)
         self.children_names.add(node.name)
 
-    def full_path(self, part: 'Partition') -> str:
+    def full_path(self, part: "Partition") -> str:
         """Return the full path of this file."""
         if self.parent is not None:
             parent = part[self.parent]
@@ -100,7 +112,9 @@ class File(object):
         else:
             return self.name
 
-    def get_content(self, partition: 'Partition') -> Optional[Union[bytes, Iterator[bytes]]]:
+    def get_content(
+        self, partition: "Partition"
+    ) -> Optional[Union[bytes, Iterator[bytes]]]:
         # pylint: disable=W0613
         """Extract the content of the file.
 
@@ -119,9 +133,11 @@ class File(object):
         return False
 
     def __repr__(self) -> str:
-        return (
-            u'File(#%s, ^^%s^^, %s, offset = %s sectors)' %
-            (self.index, self.parent, self.name, self.offset)
+        return "File(#%s, ^^%s^^, %s, offset = %s sectors)" % (
+            self.index,
+            self.parent,
+            self.name,
+            self.offset,
         )
 
 
@@ -130,16 +146,19 @@ class Partition(object):
 
     Parameter root_id represents the identifier assigned to the root directory
     of a partition. This can be file system dependent."""
-    def __init__(self, fs_type: str, root_id: Union[int, str], scanner: 'DiskScanner') -> None:
+
+    def __init__(
+        self, fs_type: str, root_id: Union[int, str], scanner: "DiskScanner"
+    ) -> None:
         self.fs_type: str = fs_type
         self.root_id: Union[int, str] = root_id
         self.size: Optional[int] = None
         self.offset: Optional[int] = None
         self.root: Optional[File] = None
-        self.lost: File = File(-1, 'LostFiles', 0, is_directory=True, is_ghost=True)
+        self.lost: File = File(-1, "LostFiles", 0, is_directory=True, is_ghost=True)
         self.files: Dict[Union[int, str], File] = {}
         self.recoverable: bool = False
-        self.scanner: 'DiskScanner' = scanner
+        self.scanner: "DiskScanner" = scanner
 
     def add_file(self, node: File) -> None:
         """Insert a new file in the partition."""
@@ -149,7 +168,7 @@ class Partition(object):
     def set_root(self, node: File) -> None:
         """Set the root directory."""
         if not node.is_directory:
-            raise TypeError('Not a directory')
+            raise TypeError("Not a directory")
         self.root = node
         self.root.set_parent(None)
 
@@ -171,7 +190,7 @@ class Partition(object):
         This method processes the contents of files and it rebuilds the
         directory tree as accurately as possible."""
         root_id = self.root_id
-        rootname = 'Root'
+        rootname = "Root"
 
         if root_id not in self.files:
             self.files[root_id] = File(
@@ -191,8 +210,13 @@ class Partition(object):
                 if exists and valid:
                     parent_node = self.files[parent_id]
                 elif exists and not valid:
-                    parent_node = File(parent_id, 'Dir_' + str(parent_id),
-                                       0, is_directory=True, is_ghost=True)
+                    parent_node = File(
+                        parent_id,
+                        "Dir_" + str(parent_id),
+                        0,
+                        is_directory=True,
+                        is_ghost=True,
+                    )
                     parent_node.set_parent(-1)
                     self.files[parent_id] = parent_node
                     self.lost.add_child(parent_node)
@@ -210,23 +234,23 @@ class Partition(object):
     def __repr__(self) -> str:
         size = (
             readable_bytes(self.size * sector_size)
-            if self.size is not None else '??? b'
+            if self.size is not None
+            else "??? b"
         )
         data = [
-            ('Offset', self.offset),
+            ("Offset", self.offset),
             (
-                'Offset (b)',
-                self.offset * sector_size
-                if self.offset is not None else None
+                "Offset (b)",
+                self.offset * sector_size if self.offset is not None else None,
             ),
         ]
         data += self.additional_repr()
-        return u'Partition (%s, %s, %d files,%s %s)' % (
+        return "Partition (%s, %s, %d files,%s %s)" % (
             self.fs_type,
             size,
             len(self.files),
-            ' Recoverable,' if self.recoverable else '',
-            ', '.join(a+': '+str(b) for a, b in data)
+            " Recoverable," if self.recoverable else "",
+            ", ".join(a + ": " + str(b) for a, b in data),
         )
 
     def __getitem__(self, index: Union[int, str]) -> File:
@@ -236,7 +260,9 @@ class Partition(object):
             return self.lost
         raise KeyError
 
-    def get(self, index: Union[int, str], default: Optional[File] = None) -> Optional[File]:
+    def get(
+        self, index: Union[int, str], default: Optional[File] = None
+    ) -> Optional[File]:
         """Get a file or the special LostFiles directory."""
         try:
             return self.__getitem__(index)
@@ -246,6 +272,7 @@ class Partition(object):
 
 class DiskScanner(object):
     """Abstract stub for the implementation of disk scanners."""
+
     def __init__(self, pointer: Any) -> None:
         self.image: Any = pointer
 
@@ -254,7 +281,7 @@ class DiskScanner(object):
         return self.image
 
     @staticmethod
-    def get_image(scanner: 'DiskScanner') -> Any:
+    def get_image(scanner: "DiskScanner") -> Any:
         """Static method to get image from scanner instance."""
         return scanner.image
 

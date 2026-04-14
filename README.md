@@ -1,6 +1,6 @@
+![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
 
-
-# ![RecuperaBit](http://i.imgur.com/Q6mM385.jpg)
+# RecuperaBit
 
 <p><a class="badge-chip" href="https://github.com/Lazza/RecuperaBit/blob/master/LICENSE.md"><img alt="GPL-3.0 license" src="https://badgen.net/github/license/Lazza/RecuperaBit"></a>
 <a class="badge-chip" href="https://github.com/Lazza/RecuperaBit/releases"><img alt="Latest release" src="https://badgen.net/github/release/Lazza/RecuperaBit"></a>
@@ -23,9 +23,19 @@ architecture used in RecuperaBit by reading
 [my MSc thesis](https://www.scribd.com/doc/309337813/) or checking out [the
 slides](http://www.slideshare.net/TheLazza/recuperabit-forensic-file-system-reconstruction-given-partially-corrupted-metadata).
 
+## Installation
+
+You can install RecuperaBit using Pip:
+
+    pip install recuperabit
+
+Or as a tool with `uv`:
+
+    uv tool install recuperabit
+
 ## Usage
 
-    usage: main.py [-h] [-s SAVEFILE] [-w] [-o OUTPUTDIR] path
+    usage: recuperabit [-h] [-s SAVEFILE] [-w] [-o OUTPUTDIR] path
 
     Reconstruct the directory structure of possibly damaged filesystems.
 

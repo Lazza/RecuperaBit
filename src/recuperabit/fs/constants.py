@@ -1,7 +1,7 @@
 """Information needed by multiple plugins."""
 
 # RecuperaBit
-# Copyright 2014-2021 Andrea Lazzarotto
+# Copyright 2014-present Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -18,6 +18,5 @@
 # You should have received a copy of the GNU General Public License
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
-
 sector_size: int = 512
-max_sectors: int = 256   # Maximum block size for recovery
+max_sectors: int = 256  # Maximum block size for recovery

@@ -1,7 +1,7 @@
 """Filesystem-independent algorithmic logic."""
 
 # RecuperaBit
-# Copyright 2014-2021 Andrea Lazzarotto
+# Copyright 2014-present Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
-
 import bisect
 import codecs
 import logging
@@ -27,9 +26,19 @@ import os.path
 import sys
 import time
 import types
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Iterator, Set, Tuple, TypeVar, Generic
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    List,
+    Optional,
+    Union,
+    Iterator,
+    Set,
+    TypeVar,
+    Generic,
+)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 if TYPE_CHECKING:
     from .fs.core_types import File, Partition
@@ -37,7 +46,10 @@ if TYPE_CHECKING:
 
 class SparseList(Generic[T]):
     """List which only stores values at some places."""
-    def __init__(self, data: Optional[Dict[int, T]] = None, default: Optional[T] = None) -> None:
+
+    def __init__(
+        self, data: Optional[Dict[int, T]] = None, default: Optional[T] = None
+    ) -> None:
         self.keys: List[int] = []  # This is always kept in order
         self.elements: Dict[int, T] = {}
         self.default: Optional[T] = default
@@ -75,21 +87,22 @@ class SparseList(Generic[T]):
         prevk = 0
         if len(self.elements) > 0:
             k = self.keys[0]
-            elems.append(str(k) + ' -> ' + repr(self.elements[k]))
+            elems.append(str(k) + " -> " + repr(self.elements[k]))
             prevk = self.keys[0]
         for i in range(1, len(self.elements)):
             nextk = self.keys[i]
             if nextk <= prevk + 2:
                 while prevk < nextk - 1:
-                    elems.append('__')
+                    elems.append("__")
                     prevk += 1
                 elems.append(repr(self.elements[nextk]))
             else:
-                elems.append('\n... ' + str(nextk) + ' -> ' +
-                             repr(self.elements[nextk]))
+                elems.append(
+                    "\n... " + str(nextk) + " -> " + repr(self.elements[nextk])
+                )
             prevk = nextk
 
-        return '[' + ', '.join(elems) + ']'
+        return "[" + ", ".join(elems) + "]"
 
     def iterkeys(self) -> Iterator[int]:
         """An iterator over the keys of actual elements."""
@@ -135,13 +148,15 @@ def preprocess_pattern(pattern: SparseList[T]) -> Dict[T, List[int]]:
     for k in pattern:
         name = pattern[k]
         if name not in result:
-            result[name] = [length-k-1]
+            result[name] = [length - k - 1]
         elif name != result[name][-1]:
-            result[name].append(length-k-1)
+            result[name].append(length - k - 1)
     return result
 
 
-def approximate_matching(records: SparseList[T], pattern: SparseList[T], stop: int, k: int = 1) -> Optional[List[Union[Set[int], int, float]]]:
+def approximate_matching(
+    records: SparseList[T], pattern: SparseList[T], stop: int, k: int = 1
+) -> Optional[List[Union[Set[int], int, float]]]:
     """Find the best match for a given pattern.
 
     The Baeza-Yates--Perleberg algorithm requires a preprocessed pattern. This
@@ -160,12 +175,12 @@ def approximate_matching(records: SparseList[T], pattern: SparseList[T], stop: i
     match_offsets: Set[int] = set()
 
     i = 0
-    j = 0   # previous value of i
+    j = 0  # previous value of i
 
     # logging.debug('Starting approximate matching up to %i', stop)
     # Loop only on indexes where there are elements
     for i in records:
-        if i > stop+msize-1:
+        if i > stop + msize - 1:
             break
 
         # zero-out the parts that were skipped
@@ -177,17 +192,15 @@ def approximate_matching(records: SparseList[T], pattern: SparseList[T], stop: i
             count[(i + off) % msize] += 1
             score = count[(i + off) % msize]
             if score == k:
-                match_offsets.add(i+off-msize+1)
+                match_offsets.add(i + off - msize + 1)
             if score > k:
                 k = score
-                match_offsets = set([i+off-msize+1])
+                match_offsets = set([i + off - msize + 1])
 
     if len(match_offsets):
         logging.debug(
-            'Found MATCH in positions {} '
-            'with weight {} ({}%)'.format(
-                match_offsets, k,
-                k * 100.0 / len(pattern.keys)
+            "Found MATCH in positions {} with weight {} ({}%)".format(
+                match_offsets, k, k * 100.0 / len(pattern.keys)
             )
         )
         return [match_offsets, k, float(k) / len(pattern.keys)]
@@ -209,11 +222,12 @@ def makedirs(path: str) -> bool:
     return True
 
 
-def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs: bool = True) -> None:
+def recursive_restore(
+    node: "File", part: "Partition", outputdir: str, make_dirs: bool = True
+) -> None:
     """Restore a directory structure starting from a file node."""
     parent_path = str(
-        part[node.parent].full_path(part) if node.parent is not None
-        else ''
+        part[node.parent].full_path(part) if node.parent is not None else ""
     )
 
     file_path = os.path.join(parent_path, node.name)
@@ -223,8 +237,7 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
     try:
         content = node.get_content(part)
     except NotImplementedError:
-        logging.error(u'Restore of #%s %s is not supported', node.index,
-                      file_path)
+        logging.error("Restore of #%s %s is not supported", node.index, file_path)
         content = None
 
     if make_dirs:
@@ -234,18 +247,18 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
     is_directory = node.is_directory or len(node.children) > 0
 
     if is_directory:
-        logging.info(u'Restoring #%s %s', node.index, file_path)
+        logging.info("Restoring #%s %s", node.index, file_path)
         if not makedirs(restore_path):
             return
 
     if is_directory and content is not None:
-        logging.warning(u'Directory %s has data content!', file_path)
-        restore_path += '_recuperabit_content'
+        logging.warning("Directory %s has data content!", file_path)
+        restore_path += "_recuperabit_content"
 
     try:
         if content is not None:
-            logging.info(u'Restoring #%s %s', node.index, file_path)
-            with codecs.open(restore_path, 'wb') as outfile:
+            logging.info("Restoring #%s %s", node.index, file_path)
+            with codecs.open(restore_path, "wb") as outfile:
                 if isinstance(content, types.GeneratorType):
                     for piece in content:
                         outfile.write(piece)
@@ -254,9 +267,9 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
         else:
             if not is_directory:
                 # Empty file
-                open(restore_path, 'wb').close()
+                open(restore_path, "wb").close()
     except IOError:
-        logging.error(u'IOError when trying to create %s', restore_path)
+        logging.error("IOError when trying to create %s", restore_path)
 
     try:
         # Restore Modification + Access time
@@ -266,11 +279,11 @@ def recursive_restore(node: 'File', part: 'Partition', outputdir: str, make_dirs
             mtime = time.mktime(mtime.astimezone().timetuple())
             os.utime(restore_path, (atime, mtime))
     except IOError:
-        logging.error(u'IOError while setting atime and mtime of %s', restore_path)
+        logging.error("IOError while setting atime and mtime of %s", restore_path)
 
     if is_directory:
         for child in node.children:
             if not child.ignore():
                 recursive_restore(child, part, outputdir, make_dirs=False)
             else:
-                logging.info(u'Skipping ignored file {}'.format(child))
+                logging.info("Skipping ignored file {}".format(child))

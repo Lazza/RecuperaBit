@@ -1,7 +1,7 @@
 """Collection of utility functions."""
 
 # RecuperaBit
-# Copyright 2014-2021 Andrea Lazzarotto
+# Copyright 2014-present Andrea Lazzarotto
 #
 # This file is part of RecuperaBit.
 #
@@ -18,14 +18,23 @@
 # You should have received a copy of the GNU General Public License
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
-
 from datetime import datetime
 import logging
 import pprint
 import string
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Iterable, Optional, List, Dict, Tuple, Union, Callable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Optional,
+    List,
+    Dict,
+    Tuple,
+    Union,
+    Callable,
+)
 import unicodedata
 import io
 
@@ -34,8 +43,7 @@ from .fs.constants import sector_size
 printer: pprint.PrettyPrinter = pprint.PrettyPrinter(indent=4)
 all_chars = (chr(i) for i in range(sys.maxunicode))
 unicode_printable: set[str] = set(
-    c for c in all_chars
-    if not unicodedata.category(c)[0].startswith('C')
+    c for c in all_chars if not unicodedata.category(c)[0].startswith("C")
 )
 ascii_printable: set[str] = set(string.printable[:-5])
 
@@ -43,7 +51,13 @@ if TYPE_CHECKING:
     from .fs.core_types import File, Partition
 
 
-def sectors(image: io.BufferedReader, offset: int, size: int, bsize: int = sector_size, fill: bool = True) -> Optional[bytearray]:
+def sectors(
+    image: io.BufferedReader,
+    offset: int,
+    size: int,
+    bsize: int = sector_size,
+    fill: bool = True,
+) -> Optional[bytearray]:
     """Read from a file descriptor."""
     read = True
     try:
@@ -61,10 +75,11 @@ def sectors(image: io.BufferedReader, offset: int, size: int, bsize: int = secto
             read = False
     if not read:
         if fill:
-            dump = size * bsize * b'\x00'
+            dump = size * bsize * b"\x00"
         else:
             return None
     return bytearray(dump)
+
 
 def unixtime(dtime: Optional[datetime]) -> float:
     """Convert datetime to UNIX epoch."""
@@ -78,7 +93,19 @@ def unixtime(dtime: Optional[datetime]) -> float:
 
 # format:
 # [(label, (formatter, lower, higher)), ...]
-def unpack(data: bytes, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], Any]], Union[int, Callable[[Dict[str, Any]], Optional[int]]], Union[int, Callable[[Dict[str, Any]], Optional[int]]]]]]) -> Dict[str, Any]:
+def unpack(
+    data: bytes,
+    fmt: List[
+        Tuple[
+            str,
+            Tuple[
+                Union[str, Callable[[bytes], Any]],
+                Union[int, Callable[[Dict[str, Any]], Optional[int]]],
+                Union[int, Callable[[Dict[str, Any]], Optional[int]]],
+            ],
+        ]
+    ],
+) -> Dict[str, Any]:
     """Extract formatted information from a string of bytes."""
     result: Dict[str, Any] = {}
     for label, description in fmt:
@@ -92,33 +119,37 @@ def unpack(data: bytes, fmt: List[Tuple[str, Tuple[Union[str, Callable[[bytes], 
             continue
 
         if callable(formatter):
-            result[label] = formatter(data[low:high+1])
+            result[label] = formatter(data[low : high + 1])
         else:
-            if formatter == 's':
-                result[label] = str(data[low:high+1])
-            if formatter.startswith('utf'):
-                result[label] = data[low:high+1].decode(formatter)
-            if formatter.endswith('i') and len(formatter) < 4:
+            if formatter == "s":
+                result[label] = str(data[low : high + 1])
+            if formatter.startswith("utf"):
+                result[label] = data[low : high + 1].decode(formatter)
+            if formatter.endswith("i") and len(formatter) < 4:
                 # Use little-endian by default. Big-endian with >i.
                 # Force sign-extension of first bit with >+i / +i.
-                chunk = data[low:high+1]
+                chunk = data[low : high + 1]
 
                 signed = False
-                if '+' in formatter:
+                if "+" in formatter:
                     signed = True
 
-                byteorder = 'little'
-                if formatter.startswith('>'):
-                    byteorder = 'big'
+                byteorder = "little"
+                if formatter.startswith(">"):
+                    byteorder = "big"
 
                 if len(chunk):
-                    result[label] = int.from_bytes(chunk, byteorder=byteorder, signed=signed)
+                    result[label] = int.from_bytes(
+                        chunk, byteorder=byteorder, signed=signed
+                    )
                 else:
                     result[label] = None
     return result
 
 
-def feed_all(image: io.BufferedReader, scanners: List[Any], indexes: Iterable[int]) -> List[int]:
+def feed_all(
+    image: io.BufferedReader, scanners: List[Any], indexes: Iterable[int]
+) -> List[int]:
     # Scan the disk image and feed the scanners
     interesting: List[int] = []
     for index in indexes:
@@ -129,104 +160,99 @@ def feed_all(image: io.BufferedReader, scanners: List[Any], indexes: Iterable[in
         for instance in scanners:
             res = instance.feed(index, sector)
             if res is not None:
-                logging.info('Found {} at sector {}'.format(res, index))
+                logging.info("Found {} at sector {}".format(res, index))
                 interesting.append(index)
     return interesting
 
 
-def printable(text: str, default: str = '.', alphabet: Optional[set[str]] = None) -> str:
+def printable(
+    text: str, default: str = ".", alphabet: Optional[set[str]] = None
+) -> str:
     """Replace unprintable characters in a text with a default one."""
     if alphabet is None:
         alphabet = unicode_printable
-    return ''.join((i if i in alphabet else default) for i in text)
-
-
-
-
-
+    return "".join((i if i in alphabet else default) for i in text)
 
 
 def readable_bytes(amount: Optional[int]) -> str:
     """Return a human readable string representing a size in bytes."""
     if amount is None:
-        return '??? B'
+        return "??? B"
     if amount < 1:
-        return '%.2f B' % amount
-    powers = {
-        0: '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'
-    }
-    biggest = max(i for i in powers if amount / 1024.**i >= 1)
-    scaled = amount / 1024.**biggest
-    return '%.2f %sB' % (scaled, powers[biggest])
+        return "%.2f B" % amount
+    powers = {0: "", 1: "K", 2: "M", 3: "G", 4: "T"}
+    biggest = max(i for i in powers if amount / 1024.0**i >= 1)
+    scaled = amount / 1024.0**biggest
+    return "%.2f %sB" % (scaled, powers[biggest])
 
 
-def _file_tree_repr(node: 'File') -> str:
+def _file_tree_repr(node: "File") -> str:
     """Give a nice representation for the tree."""
-    desc = (
-        ' [GHOST]' if node.is_ghost else
-        ' [DELETED]' if node.is_deleted else ''
-    )
-    tail = '/' if node.is_directory else ''
+    desc = " [GHOST]" if node.is_ghost else " [DELETED]" if node.is_deleted else ""
+    tail = "/" if node.is_directory else ""
     data = [
-        ('Id', node.index),
-        ('Offset', node.offset),
+        ("Id", node.index),
+        ("Offset", node.offset),
         (
-            'Offset bytes',
-            node.offset * sector_size
-            if node.offset is not None else None
-        )
+            "Offset bytes",
+            node.offset * sector_size if node.offset is not None else None,
+        ),
         # ('MAC', node.mac)
     ]
     if not node.is_directory:
-        data += [('Size', readable_bytes(node.size))]
-    return u'%s%s (%s) %s' % (
-        node.name, tail, ', '.join(a + ': ' + str(b) for a, b in data), desc
+        data += [("Size", readable_bytes(node.size))]
+    return "%s%s (%s) %s" % (
+        node.name,
+        tail,
+        ", ".join(a + ": " + str(b) for a, b in data),
+        desc,
     )
 
 
-def tree_folder(directory: 'File', padding: int = 0) -> str:
+def tree_folder(directory: "File", padding: int = 0) -> str:
     """Return a tree-like textual representation of a directory."""
     lines: List[str] = []
-    pad = ' ' * padding
-    lines.append(
-        pad + _file_tree_repr(directory)
-    )
+    pad = " " * padding
+    lines.append(pad + _file_tree_repr(directory))
     padding = padding + 2
-    pad = ' ' * padding
+    pad = " " * padding
     for entry in directory.children:
         if len(entry.children) or entry.is_directory:
             lines.append(tree_folder(entry, padding))
         else:
-            lines.append(
-                pad + _file_tree_repr(entry)
-            )
-    return '\n'.join(lines)
+            lines.append(pad + _file_tree_repr(entry))
+    return "\n".join(lines)
 
 
-def _bodyfile_repr(node: 'File', path: str) -> str:
+def _bodyfile_repr(node: "File", path: str) -> str:
     """Return a body file line for node."""
-    end = '/' if node.is_directory or len(node.children) else ''
-    return '|'.join(str(el) for el in [
-        '0',                        # MD5
-        path + node.name + end,     # name
-        node.index,                 # inode
-        '0', '0', '0',              # mode, UID, GID
-        node.size if node.size is not None else 0,
-        unixtime(node.mac['access']),
-        unixtime(node.mac['modification']),
-        unixtime(node.mac['creation']),
-        '0'
-    ])
+    end = "/" if node.is_directory or len(node.children) else ""
+    return "|".join(
+        str(el)
+        for el in [
+            "0",  # MD5
+            path + node.name + end,  # name
+            node.index,  # inode
+            "0",
+            "0",
+            "0",  # mode, UID, GID
+            node.size if node.size is not None else 0,
+            unixtime(node.mac["access"]),
+            unixtime(node.mac["modification"]),
+            unixtime(node.mac["creation"]),
+            "0",
+        ]
+    )
 
 
-def bodyfile_folder(directory: 'File', path: str = '') -> List[str]:
+def bodyfile_folder(directory: "File", path: str = "") -> List[str]:
     """Create a body file compatible with TSK 3.x.
 
     Format:
     '#MD5|name|inode|mode_as_string|UID|GID|size|atime|mtime|ctime|crtime'
     See also: http://wiki.sleuthkit.org/index.php?title=Body_file"""
     lines: List[str] = [_bodyfile_repr(directory, path)]
-    path += directory.name + '/'
+    path += directory.name + "/"
     for entry in directory.children:
         if len(entry.children) or entry.is_directory:
             lines += bodyfile_folder(entry, path)
@@ -237,43 +263,44 @@ def bodyfile_folder(directory: 'File', path: str = '') -> List[str]:
 
 def _ltx_clean(label: Any) -> str:
     """Small filter to prepare strings to be included in LaTeX code."""
-    clean = str(label).replace('$', r'\$').replace('_', r'\_')
-    if clean[0] == '-':
-        clean = r'\textminus{}' + clean[1:]
+    clean = str(label).replace("$", r"\$").replace("_", r"\_")
+    if clean[0] == "-":
+        clean = r"\textminus{}" + clean[1:]
     return clean
 
 
-def _tikz_repr(node: 'File') -> str:
+def _tikz_repr(node: "File") -> str:
     """Represent the node for a Tikz diagram."""
-    return r'node %s{%s\enskip{}%s}' % (
-        '[ghost]' if node.is_ghost else '[deleted]' if node.is_deleted else '',
-        _ltx_clean(node.index), _ltx_clean(node.name)
+    return r"node %s{%s\enskip{}%s}" % (
+        "[ghost]" if node.is_ghost else "[deleted]" if node.is_deleted else "",
+        _ltx_clean(node.index),
+        _ltx_clean(node.name),
     )
 
 
-def tikz_child(directory: 'File', padding: int = 0) -> Tuple[str, int]:
+def tikz_child(directory: "File", padding: int = 0) -> Tuple[str, int]:
     """Write a child row for Tikz representation."""
-    pad = ' ' * padding
-    lines: List[str] = [r'%schild {%s' % (pad, _tikz_repr(directory))]
+    pad = " " * padding
+    lines: List[str] = [r"%schild {%s" % (pad, _tikz_repr(directory))]
     count: int = len(directory.children)
     for entry in directory.children:
-        content, number = tikz_child(entry, padding+4)
+        content, number = tikz_child(entry, padding + 4)
         lines.append(content)
         count += number
-    lines.append('}')
+    lines.append("}")
     for entry in range(count):
-        lines.append('child [missing] {}')
-    return '\n'.join(lines).replace('\n}', '}'), count
+        lines.append("child [missing] {}")
+    return "\n".join(lines).replace("\n}", "}"), count
 
 
-def tikz_part(part: 'Partition') -> str:
+def tikz_part(part: "Partition") -> str:
     """Create LaTeX code to represent the directory structure as a nice Tikz
     diagram.
 
     See also: http://www.texample.net/tikz/examples/filesystem-tree/"""
 
-    preamble = (r"""%\usepackage{tikz}
-    %\usetikzlibrary{trees}""")
+    preamble = r"""%\usepackage{tikz}
+    %\usetikzlibrary{trees}"""
 
     begin_tree = r"""\begin{tikzpicture}[%
     grow via three points={one child at (1.75em,-1.75em) and
@@ -283,46 +310,64 @@ def tikz_part(part: 'Partition') -> str:
     """
     end_tree = r"""\end{tikzpicture}"""
 
-    lines = [r'\node [root] {File System Structure}']
+    lines = [r"\node [root] {File System Structure}"]
     lines += [tikz_child(entry, 4)[0] for entry in (part.root, part.lost)]
-    lines.append(';')
+    lines.append(";")
 
-    return '%s\n\n%s\n%s\n%s' % (
-        preamble, begin_tree, '\n'.join(lines), end_tree
-    )
+    return "%s\n\n%s\n%s\n%s" % (preamble, begin_tree, "\n".join(lines), end_tree)
 
 
-def csv_part(part: 'Partition') -> list[str]:
+def csv_part(part: "Partition") -> list[str]:
     """Provide a CSV representation for a partition."""
     contents = [
-        ','.join(('Id', 'Parent', 'Name', 'Full Path', 'Modification Time',
-                  'Access Time', 'Creation Time', 'Size (bytes)',
-                  'Size (human)', 'Offset (bytes)', 'Offset (sectors)',
-                  'Directory', 'Deleted', 'Ghost'))
+        ",".join(
+            (
+                "Id",
+                "Parent",
+                "Name",
+                "Full Path",
+                "Modification Time",
+                "Access Time",
+                "Creation Time",
+                "Size (bytes)",
+                "Size (human)",
+                "Offset (bytes)",
+                "Offset (sectors)",
+                "Directory",
+                "Deleted",
+                "Ghost",
+            )
+        )
     ]
     for index in part.files:
         obj = part.files[index]
         contents.append(
-                u'%s,%s,"%s","%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s' % (
-                    obj.index, obj.parent, obj.name,
-                    obj.full_path(part),
-                    obj.mac['modification'], obj.mac['access'],
-                    obj.mac['creation'], obj.size,
-                    readable_bytes(obj.size),
-                    (obj.offset * sector_size
-                     if obj.offset is not None else None),
-                    obj.offset,
-                    '1' if obj.is_directory else '',
-                    '1' if obj.is_deleted else '',
-                    '1' if obj.is_ghost else ''
-                )
+            '%s,%s,"%s","%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s'
+            % (
+                obj.index,
+                obj.parent,
+                obj.name,
+                obj.full_path(part),
+                obj.mac["modification"],
+                obj.mac["access"],
+                obj.mac["creation"],
+                obj.size,
+                readable_bytes(obj.size),
+                (obj.offset * sector_size if obj.offset is not None else None),
+                obj.offset,
+                "1" if obj.is_directory else "",
+                "1" if obj.is_deleted else "",
+                "1" if obj.is_ghost else "",
+            )
         )
     return contents
 
 
-def _sub_locate(text: str, directory: 'File', part: 'Partition') -> List[Tuple['File', str]]:
+def _sub_locate(
+    text: str, directory: "File", part: "Partition"
+) -> List[Tuple["File", str]]:
     """Helper for locate."""
-    lines: List[Tuple['File', str]] = []
+    lines: List[Tuple["File", str]] = []
     for entry in sorted(directory.children, key=lambda node: node.name):
         path = entry.full_path(part)
         if text in path.lower():
@@ -332,20 +377,17 @@ def _sub_locate(text: str, directory: 'File', part: 'Partition') -> List[Tuple['
     return lines
 
 
-def locate(part: 'Partition', text: str) -> List[Tuple['File', str]]:
+def locate(part: "Partition", text: str) -> List[Tuple["File", str]]:
     """Return paths of files matching the text."""
-    lines: List[Tuple['File', str]] = []
+    lines: List[Tuple["File", str]] = []
     text = text.lower()
     lines += _sub_locate(text, part.lost, part)
     lines += _sub_locate(text, part.root, part)
     return lines
 
 
-def merge(part: 'Partition', piece: 'Partition') -> None:
+def merge(part: "Partition", piece: "Partition") -> None:
     """Merge piece into part (both are partitions)."""
     for index in piece.files:
-        if (
-            index not in part.files or
-            part.files[index].is_ghost
-        ):
+        if index not in part.files or part.files[index].is_ghost:
             part.add_file(piece.files[index])
