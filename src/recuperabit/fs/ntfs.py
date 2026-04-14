@@ -21,29 +21,33 @@ including MFT entries and directory indexes."""
 # You should have received a copy of the GNU General Public License
 # along with RecuperaBit. If not, see <http://www.gnu.org/licenses/>.
 
-
 import logging
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple, Union, Iterator, Set
 
 from .constants import max_sectors, sector_size
 from .core_types import DiskScanner, File, Partition
-from .ntfs_fmt import (attr_header_fmt, attr_names, attr_nonresident_fmt,
-                      attr_resident_fmt, attr_types_fmt, attribute_list_parser,
-                      boot_sector_fmt, entry_fmt, indx_dir_entry_fmt, indx_fmt,
-                      indx_header_fmt)
+from .ntfs_fmt import (
+    attr_header_fmt,
+    attr_names,
+    attr_nonresident_fmt,
+    attr_resident_fmt,
+    attr_types_fmt,
+    attribute_list_parser,
+    boot_sector_fmt,
+    entry_fmt,
+    indx_dir_entry_fmt,
+    indx_fmt,
+    indx_header_fmt,
+)
 
 from ..logic import SparseList, approximate_matching
 from ..utils import merge, sectors, unpack
 
 # Some attributes may appear multiple times
-multiple_attributes: Set[str] = set([
-    '$FILE_NAME',
-    '$DATA',
-    '$INDEX_ROOT',
-    '$INDEX_ALLOCATION',
-    '$BITMAP'
-])
+multiple_attributes: Set[str] = set(
+    ["$FILE_NAME", "$DATA", "$INDEX_ROOT", "$INDEX_ALLOCATION", "$BITMAP"]
+)
 
 # Size of records in sectors
 FILE_size: int = 2
@@ -70,37 +74,37 @@ def best_name(entries: List[Tuple[int, str]]) -> Optional[str]:
 def parse_mft_attr(attr: bytes) -> Tuple[Dict[str, Any], Optional[str]]:
     """Parse the contents of a MFT attribute."""
     header = unpack(attr, attr_header_fmt)
-    attr_type = header['type']
+    attr_type = header["type"]
 
     if attr_type not in attr_names:
         return header, None
 
-    if header['non_resident']:
+    if header["non_resident"]:
         nonresident = unpack(attr, attr_nonresident_fmt)
-        if nonresident['runlist'] is None:
-            nonresident['runlist'] = list()
+        if nonresident["runlist"] is None:
+            nonresident["runlist"] = list()
         header.update(nonresident)
     else:
         resident = unpack(attr, attr_resident_fmt)
         header.update(resident)
-        offset = header['content_off']
+        offset = header["content_off"]
         content = attr[offset:]
 
     name = attr_names[attr_type]
-    if not header['non_resident'] and name in attr_types_fmt:
-        size = header['content_size']
+    if not header["non_resident"] and name in attr_types_fmt:
+        size = header["content_size"]
         data = unpack(content[:size], attr_types_fmt[name])
-        header['content'] = data
+        header["content"] = data
 
     return header, name
 
 
 def _apply_fixup_values(header: Dict[str, Any], entry: bytearray) -> None:
     """Apply the fixup values to FILE and INDX records."""
-    offset = header['off_fixup']
-    for i in range(1, header['n_entries']):
+    offset = header["off_fixup"]
+    for i in range(1, header["n_entries"]):
         pos = sector_size * i
-        entry[pos-2:pos] = entry[offset + 2*i:offset + 2*(i+1)]
+        entry[pos - 2 : pos] = entry[offset + 2 * i : offset + 2 * (i + 1)]
 
 
 def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
@@ -112,12 +116,12 @@ def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
         except TypeError:
             # The attribute was broken, we need to terminate here
             return attributes
-        attr['dump_offset'] = offset
-        if attr['length'] == 0:
+        attr["dump_offset"] = offset
+        if attr["length"] == 0:
             # End of attribute list
             break
         else:
-            offset = offset + attr['length']
+            offset = offset + attr["length"]
             if name is None:
                 # Skip broken/unknown attribute
                 continue
@@ -130,28 +134,30 @@ def _attributes_reader(entry: bytes, offset: int) -> Dict[str, Any]:
                 if name in multiple_attributes:
                     attributes[name].append(attr)
                 else:
-                    logging.error('Cannot handle multiple attribute %s', name)
+                    logging.error("Cannot handle multiple attribute %s", name)
     return attributes
 
 
 def parse_file_record(entry: bytes) -> Dict[str, Any]:
     """Parse the contents of a FILE record (MFT entry)."""
     header = unpack(entry, entry_fmt)
-    if (header['size_alloc'] is None or
-            header['size_alloc'] > len(entry) or
-            len(entry) < FILE_size*sector_size):
-        header['valid'] = False
+    if (
+        header["size_alloc"] is None
+        or header["size_alloc"] > len(entry)
+        or len(entry) < FILE_size * sector_size
+    ):
+        header["valid"] = False
         return header
 
     # Old versions of NTFS don't have a MFT record number.
-    if header['off_fixup'] < 48:
-        header['record_n'] = None
+    if header["off_fixup"] < 48:
+        header["record_n"] = None
 
     _apply_fixup_values(header, entry)
 
-    attributes = _attributes_reader(entry, header['off_first'])
-    header['valid'] = True
-    header['attributes'] = attributes
+    attributes = _attributes_reader(entry, header["off_first"])
+    header["valid"] = True
+    header["attributes"] = attributes
     return header
 
 
@@ -162,83 +168,82 @@ def parse_indx_record(entry: bytes) -> Dict[str, Any]:
     _apply_fixup_values(header, entry)
 
     node_data = unpack(entry[24:], indx_header_fmt)
-    node_data['off_start_list'] += 24
-    node_data['off_end_list'] += 24
-    node_data['off_end_buffer'] += 24
+    node_data["off_start_list"] += 24
+    node_data["off_end_list"] += 24
+    node_data["off_end_buffer"] += 24
     header.update(node_data)
 
-    offset = header['off_start_list']
+    offset = header["off_start_list"]
     entries = []
-    while offset < header['off_end_list']:
+    while offset < header["off_end_list"]:
         entry_data = unpack(entry[offset:], indx_dir_entry_fmt)
-        if entry_data['content_length']:
+        if entry_data["content_length"]:
             try:
-                file_name = unpack(
-                    entry[offset + 16:],
-                    attr_types_fmt['$FILE_NAME']
-                )
-            except (UnicodeDecodeError, TypeError):  # Invalid file name or invalid name length
+                file_name = unpack(entry[offset + 16 :], attr_types_fmt["$FILE_NAME"])
+            except (
+                UnicodeDecodeError,
+                TypeError,
+            ):  # Invalid file name or invalid name length
                 break
             # Perform checks to avoid false positives
-            name_ok = file_name['name'] is not None
-            namespace_ok = 0 <= file_name['namespace'] <= 3
-            size_ok = file_name['real_size'] <= file_name['allocated_size']
+            name_ok = file_name["name"] is not None
+            namespace_ok = 0 <= file_name["namespace"] <= 3
+            size_ok = file_name["real_size"] <= file_name["allocated_size"]
             features_ok = not (
-                file_name['flags'] == 0 and
-                file_name['parent_seq'] > 1024
+                file_name["flags"] == 0 and file_name["parent_seq"] > 1024
             )
             if name_ok and namespace_ok and size_ok and features_ok:
-                entry_data['file_info'] = file_name
+                entry_data["file_info"] = file_name
                 entries.append(entry_data)
             else:
                 break
-        if entry_data['entry_length']:
-            offset += entry_data['entry_length']
+        if entry_data["entry_length"]:
+            offset += entry_data["entry_length"]
         else:
             break
-    header['entries'] = entries
-    header['valid'] = len(entries) > 0
+    header["entries"] = entries
+    header["valid"] = len(entries) > 0
     return header
 
 
-def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', image: Any) -> None:
+def _integrate_attribute_list(
+    parsed: Dict[str, Any], part: "NTFSPartition", image: Any
+) -> None:
     """Integrate missing attributes in the parsed MTF entry."""
-    base_record = parsed['record_n']
-    attrs = parsed['attributes']
-    attr = attrs['$ATTRIBUTE_LIST']
+    base_record = parsed["record_n"]
+    attrs = parsed["attributes"]
+    attr = attrs["$ATTRIBUTE_LIST"]
 
     spc = part.sec_per_clus
-    if 'runlist' in attr:
+    if "runlist" in attr:
         clusters_pos = 0
         entries = []
-        size = attr['real_size']
-        for entry in attr['runlist']:
-            clusters_pos += entry['offset']
-            length = min(entry['length'] * spc * sector_size, size)
+        size = attr["real_size"]
+        for entry in attr["runlist"]:
+            clusters_pos += entry["offset"]
+            length = min(entry["length"] * spc * sector_size, size)
             size -= length
             real_pos = clusters_pos * spc + part.offset
             dump = sectors(image, real_pos, length, 1)
             entries += attribute_list_parser(dump)
-        attr['content'] = {'entries': entries}
+        attr["content"] = {"entries": entries}
     else:
-        entries = attr['content']['entries']
+        entries = attr["content"]["entries"]
 
     # Divide entries by type
-    types = set(e['type'] for e in entries)
+    types = set(e["type"] for e in entries)
     entries_by_type = {
         t: set(
-            e['file_ref'] for e in entries
-            if e['type'] == t and e['file_ref'] is not None
+            e["file_ref"]
+            for e in entries
+            if e["type"] == t and e["file_ref"] is not None
         )
         for t in types
     }
     # Remove completely "local" types or empty lists
     for num in list(entries_by_type):
         files = entries_by_type[num]
-        if (
-            len(files) == 0 or
-            (len(files) == 1 and next(iter(files)) == base_record)
-        ):
+        if len(files) == 0 or (len(files) == 1 and next(iter(files)) == base_record):
             del entries_by_type[num]
 
     mft_pos = part.mft_pos
@@ -248,11 +253,11 @@ def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', ima
             real_pos = mft_pos + index * FILE_size
             dump = sectors(image, real_pos, FILE_size)
             child_parsed = parse_file_record(dump)
-            if 'attributes' not in child_parsed:
+            if "attributes" not in child_parsed:
                 continue
             # Update the main entry (parsed)
-            if child_parsed['base_record'] == base_record:
-                child_attrs = child_parsed['attributes']
+            if child_parsed["base_record"] == base_record:
+                child_attrs = child_parsed["attributes"]
                 for name in child_attrs:
                     if name in multiple_attributes:
                         try:
@@ -265,60 +270,72 @@ def _integrate_attribute_list(parsed: Dict[str, Any], part: 'NTFSPartition', ima
 
 class NTFSFile(File):
     """NTFS File."""
-    def __init__(self, parsed: Dict[str, Any], offset: Optional[int], is_ghost: bool = False, ads: str = '') -> None:
-        index = parsed['record_n']
-        ads_suffix = ':' + ads if ads != '' else ads
-        if ads != '':
+
+    def __init__(
+        self,
+        parsed: Dict[str, Any],
+        offset: Optional[int],
+        is_ghost: bool = False,
+        ads: str = "",
+    ) -> None:
+        index = parsed["record_n"]
+        ads_suffix = ":" + ads if ads != "" else ads
+        if ads != "":
             index = str(index) + ads_suffix
-        attrs = parsed['attributes']
-        filenames = attrs['$FILE_NAME']
-        datas = attrs.get('$DATA', [])
+        attrs = parsed["attributes"]
+        filenames = attrs["$FILE_NAME"]
+        datas = attrs.get("$DATA", [])
 
         size = None
         for attr in datas:
-            if attr['name'] == ads:
-                if 'real_size' in attr:
-                    size = attr['real_size']
-                elif not attr['non_resident']:
-                    size = attr['content_size']
+            if attr["name"] == ads:
+                if "real_size" in attr:
+                    size = attr["real_size"]
+                elif not attr["non_resident"]:
+                    size = attr["content_size"]
                 break
 
         filtered = [
-            f for f in filenames if 'content' in f and
-            f['content'] is not None and
-            'name_length' in f['content'] and
-            f['content']['name_length'] > 0 and
-            f['content']['name'] is not None
+            f
+            for f in filenames
+            if "content" in f
+            and f["content"] is not None
+            and "name_length" in f["content"]
+            and f["content"]["name_length"] > 0
+            and f["content"]["name"] is not None
         ]
-        name = best_name([
-            (f['content']['namespace'], f['content']['name'] + ads_suffix)
-            for f in filtered
-        ])
+        name = best_name(
+            [
+                (f["content"]["namespace"], f["content"]["name"] + ads_suffix)
+                for f in filtered
+            ]
+        )
         hasname = name is not None
 
         if not hasname:
-            name = 'File_%s' % index
+            name = "File_%s" % index
 
-        std_info = attrs.get('$STANDARD_INFORMATION')
+        std_info = attrs.get("$STANDARD_INFORMATION")
 
-        is_dir = (parsed['flags'] & 0x02) > 0 and not len(ads)
-        is_del = (parsed['flags'] & 0x01) == 0
+        is_dir = (parsed["flags"] & 0x02) > 0 and not len(ads)
+        is_del = (parsed["flags"] & 0x01) == 0
         File.__init__(self, index, name, size, is_dir, is_del, is_ghost)
 
         time_attribute = None
 
         # Additional attributes
         if hasname:
-            first = filtered[0]['content']
-            parent_id = first['parent_entry']
+            first = filtered[0]["content"]
+            parent_id = first["parent_entry"]
             File.set_parent(self, parent_id)
             File.set_offset(self, offset)
             time_attribute = std_info or filtered[0]
-        if time_attribute and 'content' in time_attribute:
+        if time_attribute and "content" in time_attribute:
             File.set_mac(
-                self, time_attribute['content']['modification_time'],
-                time_attribute['content']['access_time'],
-                time_attribute['content']['creation_time'],
+                self,
+                time_attribute["content"]["modification_time"],
+                time_attribute["content"]["access_time"],
+                time_attribute["content"]["creation_time"],
             )
         self.ads = ads
 
@@ -327,143 +344,150 @@ class NTFSFile(File):
         dump = sectors(image, offset, size, 1)
         if len(dump) < size:
             logging.warning(
-                'Failed to read byte(s). Padding with 0x00. Offset: {} Size: '
-                '{}'.format(offset, size))
-            dump += bytearray(b'\x00' * (size - len(dump)))
+                "Failed to read byte(s). Padding with 0x00. Offset: {} Size: {}".format(
+                    offset, size
+                )
+            )
+            dump += bytearray(b"\x00" * (size - len(dump)))
         return dump
 
-    def content_iterator(self, partition: 'NTFSPartition', image: Any, datas: List[Dict[str, Any]]) -> Iterator[bytes]:
+    def content_iterator(
+        self, partition: "NTFSPartition", image: Any, datas: List[Dict[str, Any]]
+    ) -> Iterator[bytes]:
         """Return an iterator for the contents of this file."""
         vcn = 0
         spc = partition.sec_per_clus
         for attr in datas:
-            diff = attr['start_VCN'] - vcn
+            diff = attr["start_VCN"] - vcn
             if diff > 0:
                 # We do not try to fill with zeroes as this might produce huge useless files
                 logging.warning(
-                    u'Missing part for {} expected VCN {}, '
-                    u'got start_VCN={} ({} clusters skipped). '.format(
-                        self, vcn, attr['start_VCN'], diff,
+                    "Missing part for {} expected VCN {}, "
+                    "got start_VCN={} ({} clusters skipped). ".format(
+                        self,
+                        vcn,
+                        attr["start_VCN"],
+                        diff,
                     )
                 )
                 vcn += diff
-                yield b''
+                yield b""
             elif diff < 0:
                 # VCN went backwards: overlap, out-of-order, or cross-stream contamination
                 logging.warning(
-                    u'$DATA attribute VCN overlap for {}. '
-                    u'expected VCN {}, got start_VCN={}. '
-                    u'This may indicate attribute filtering error or MFT corruption.'.format(
-                        self, vcn, attr['start_VCN']
+                    "$DATA attribute VCN overlap for {}. "
+                    "expected VCN {}, got start_VCN={}. "
+                    "This may indicate attribute filtering error or MFT corruption.".format(
+                        self, vcn, attr["start_VCN"]
                     )
                 )
 
             clusters_pos = 0
-            size = attr['real_size']
+            size = attr["real_size"]
 
-            if 'runlist' not in attr:
-                logging.error(
-                    u'Cannot restore {}, missing runlist'.format(self)
-                )
+            if "runlist" not in attr:
+                logging.error("Cannot restore {}, missing runlist".format(self))
                 break
 
-            for entry in attr['runlist']:
-                length = min(entry['length'] * spc * sector_size, size)
+            for entry in attr["runlist"]:
+                length = min(entry["length"] * spc * sector_size, size)
                 size -= length
                 # Sparse runlist
-                if entry['offset'] is None:
+                if entry["offset"] is None:
                     while length > 0:
-                        amount = min(max_sectors*sector_size, length)
+                        amount = min(max_sectors * sector_size, length)
                         length -= amount
-                        yield b'\x00' * amount
+                        yield b"\x00" * amount
                     continue
                 # Normal runlists
-                clusters_pos += entry['offset']
+                clusters_pos += entry["offset"]
                 real_pos = clusters_pos * spc + partition.offset
                 # Avoid to fill memory with huge blocks
                 offset = 0
                 while length > 0:
-                    amount = min(max_sectors*sector_size, length)
-                    position = real_pos*sector_size + offset
+                    amount = min(max_sectors * sector_size, length)
+                    position = real_pos * sector_size + offset
                     partial = self._padded_bytes(image, position, amount)
                     length -= amount
                     offset += amount
                     yield bytes(partial)
-            vcn = attr['end_VCN'] + 1
+            vcn = attr["end_VCN"] + 1
 
-    def get_content(self, partition: 'NTFSPartition') -> Optional[Union[bytes, Iterator[bytes]]]:
+    def get_content(
+        self, partition: "NTFSPartition"
+    ) -> Optional[Union[bytes, Iterator[bytes]]]:
         """Extract the content of the file.
 
         This method works by extracting the $DATA attribute."""
         if self.is_ghost:
-            logging.error(u'Cannot restore ghost file {}'.format(self))
+            logging.error("Cannot restore ghost file {}".format(self))
             return None
 
         image = DiskScanner.get_image(partition.scanner)
         dump = sectors(image, File.get_offset(self), FILE_size)
         parsed = parse_file_record(dump)
 
-        if not parsed['valid'] or 'attributes' not in parsed:
-            logging.error(u'Invalid MFT entry for {}'.format(self))
+        if not parsed["valid"] or "attributes" not in parsed:
+            logging.error("Invalid MFT entry for {}".format(self))
             return None
-        attrs = parsed['attributes']
-        if ('$ATTRIBUTE_LIST' in attrs and
-                partition.sec_per_clus is not None):
+        attrs = parsed["attributes"]
+        if "$ATTRIBUTE_LIST" in attrs and partition.sec_per_clus is not None:
             _integrate_attribute_list(parsed, partition, image)
-        if '$DATA' not in attrs:
-            attrs['$DATA'] = []
-        datas = [d for d in attrs['$DATA'] if d['name'] == self.ads]
+        if "$DATA" not in attrs:
+            attrs["$DATA"] = []
+        datas = [d for d in attrs["$DATA"] if d["name"] == self.ads]
         if not len(datas):
             if not self.is_directory:
-                logging.error(u'Cannot restore $DATA attribute(s) '
-                              'for {}'.format(self))
+                logging.error("Cannot restore $DATA attribute(s) for {}".format(self))
             return None
 
         # TODO implemented compressed attributes
         for d in datas:
-            if d['flags'] & 0x01:
-                logging.error(u'Cannot restore compressed $DATA attribute(s) '
-                              'for {}'.format(self))
+            if d["flags"] & 0x01:
+                logging.error(
+                    "Cannot restore compressed $DATA attribute(s) for {}".format(self)
+                )
                 return None
-            elif d['flags'] & 0x4000:
-                logging.warning(u'Found encrypted $DATA attribute(s) '
-                                'for {}'.format(self))
+            elif d["flags"] & 0x4000:
+                logging.warning(
+                    "Found encrypted $DATA attribute(s) for {}".format(self)
+                )
 
         # Handle resident file content
-        if len(datas) == 1 and not datas[0]['non_resident']:
+        if len(datas) == 1 and not datas[0]["non_resident"]:
             single = datas[0]
-            start = single['dump_offset'] + single['content_off']
-            end = start + single['content_size']
+            start = single["dump_offset"] + single["content_off"]
+            end = start + single["content_size"]
             content = dump[start:end]
             return bytes(content)
         else:
             if partition.sec_per_clus is None:
-                logging.error(u'Cannot restore non-resident $DATA '
-                              'attribute(s) for {}'.format(self))
+                logging.error(
+                    "Cannot restore non-resident $DATA attribute(s) for {}".format(self)
+                )
                 return None
             non_resident = sorted(
-                (d for d in datas if d['non_resident']),
-                key=lambda x: x['start_VCN']
+                (d for d in datas if d["non_resident"]), key=lambda x: x["start_VCN"]
             )
             if len(non_resident) != len(datas):
                 logging.warning(
-                    u'Found leftover resident $DATA attributes for '
-                    '{}. Only those non-resident parts will be restored.'.format(self)
+                    "Found leftover resident $DATA attributes for "
+                    "{}. Only those non-resident parts will be restored.".format(self)
                 )
             return self.content_iterator(partition, image, non_resident)
 
     def ignore(self) -> bool:
         """Determine which files should be ignored."""
-        return (
-            (self.index == '8:$Bad') or
-            (self.parent == 11 and self.ads == '$J')    # $UsnJrnl
-        )
+        return (self.index == "8:$Bad") or (
+            self.parent == 11 and self.ads == "$J"
+        )  # $UsnJrnl
 
 
 class NTFSPartition(Partition):
     """Partition with additional fields for NTFS recovery."""
-    def __init__(self, scanner: 'NTFSScanner', position: Optional[int] = None) -> None:
-        Partition.__init__(self, 'NTFS', 5, scanner)
+
+    def __init__(self, scanner: "NTFSScanner", position: Optional[int] = None) -> None:
+        Partition.__init__(self, "NTFS", 5, scanner)
         self.sec_per_clus: Optional[int] = None
         self.mft_pos: Optional[int] = position
         self.mftmirr_pos: Optional[int] = None
@@ -471,14 +495,15 @@ class NTFSPartition(Partition):
     def additional_repr(self) -> List[Tuple[str, Any]]:
         """Return additional values to show in the string representation."""
         return [
-            ('Sec/Clus', self.sec_per_clus),
-            ('MFT offset', self.mft_pos),
-            ('MFT mirror offset', self.mftmirr_pos)
+            ("Sec/Clus", self.sec_per_clus),
+            ("MFT offset", self.mft_pos),
+            ("MFT mirror offset", self.mftmirr_pos),
         ]
 
 
 class NTFSScanner(DiskScanner):
     """NTFS Disk Scanner."""
+
     def __init__(self, pointer: Any) -> None:
         DiskScanner.__init__(self, pointer)
         self.found_file: Set[int] = set()
@@ -492,46 +517,45 @@ class NTFSScanner(DiskScanner):
     def feed(self, index: int, sector: bytes) -> Optional[str]:
         """Feed a new sector."""
         # check boot sector
-        if sector.endswith(b'\x55\xAA') and b'NTFS' in sector[:8]:
+        if sector.endswith(b"\x55\xaa") and b"NTFS" in sector[:8]:
             self.found_boot.append(index)
-            return 'NTFS boot sector'
+            return "NTFS boot sector"
 
         # check file record
-        if sector.startswith((b'FILE', b'BAAD')):
+        if sector.startswith((b"FILE", b"BAAD")):
             self.found_file.add(index)
-            return 'NTFS file record'
+            return "NTFS file record"
 
         # check index record
-        if sector.startswith(b'INDX'):
+        if sector.startswith(b"INDX"):
             self.found_indx.add(index)
-            return 'NTFS index record'
+            return "NTFS index record"
 
     @staticmethod
     def add_indx_entries(entries: List[Dict[str, Any]], part: NTFSPartition) -> None:
         """Insert new ghost files which were not already found."""
         for rec in entries:
-            if (rec['record_n'] not in part.files and
-                    rec['$FILE_NAME'] is not None):
+            if rec["record_n"] not in part.files and rec["$FILE_NAME"] is not None:
                 # Compatibility with the structure of a MFT entry
-                rec['attributes'] = {
-                    '$FILE_NAME': [{'content': rec['$FILE_NAME']}]
-                }
+                rec["attributes"] = {"$FILE_NAME": [{"content": rec["$FILE_NAME"]}]}
                 """Although the structure of r is similar to that of a MFT
                 entry, flags were about the index, not about the file. We
                 don't know if the element is a directory or not, hence we
                 mark it as a file. It can be deduced if it is a directory
                 by looking at the number of children, after the
                 reconstruction."""
-                rec['flags'] = 0x1
+                rec["flags"] = 0x1
                 part.add_file(NTFSFile(rec, None, is_ghost=True))
 
     def add_from_indx_root(self, parsed: Dict[str, Any], part: NTFSPartition) -> None:
         """Add ghost entries to part from INDEX_ROOT attributes in parsed."""
-        for attribute in parsed['attributes']['$INDEX_ROOT']:
-            if (attribute.get('content') is None or
-                    attribute['content'].get('records') is None):
+        for attribute in parsed["attributes"]["$INDEX_ROOT"]:
+            if (
+                attribute.get("content") is None
+                or attribute["content"].get("records") is None
+            ):
                 continue
-            self.add_indx_entries(attribute['content']['records'], part)
+            self.add_indx_entries(attribute["content"]["records"], part)
 
     def most_likely_sec_per_clus(self) -> List[int]:
         """Determine the most likely value of sec_per_clus of each partition,
@@ -541,14 +565,16 @@ class NTFSScanner(DiskScanner):
         counter.update(2**i for i in range(8))
         return [i for i, _ in counter.most_common()]
 
-    def find_boundary(self, part: NTFSPartition, mft_address: int, multipliers: List[int]) -> Tuple[Optional[int], Optional[int]]:
+    def find_boundary(
+        self, part: NTFSPartition, mft_address: int, multipliers: List[int]
+    ) -> Tuple[Optional[int], Optional[int]]:
         """Determine the starting sector of a partition with INDX records."""
         nodes = (
             self.parsed_file_review[node.offset]
             for node in part.files.values()
-            if node.offset in self.parsed_file_review and
-            '$INDEX_ALLOCATION' in
-            self.parsed_file_review[node.offset]['attributes']
+            if node.offset in self.parsed_file_review
+            and "$INDEX_ALLOCATION"
+            in self.parsed_file_review[node.offset]["attributes"]
         )
 
         text_list = self.indx_list
@@ -556,29 +582,27 @@ class NTFSScanner(DiskScanner):
 
         base_pattern = {}
         for parsed in nodes:
-            for attr in parsed['attributes']['$INDEX_ALLOCATION']:
+            for attr in parsed["attributes"]["$INDEX_ALLOCATION"]:
                 clusters_pos = 0
-                if 'runlist' not in attr:
+                if "runlist" not in attr:
                     continue
-                runlist = attr['runlist']
+                runlist = attr["runlist"]
                 for entry in runlist:
-                    clusters_pos += entry['offset']
-                    base_pattern[clusters_pos] = parsed['record_n']
+                    clusters_pos += entry["offset"]
+                    base_pattern[clusters_pos] = parsed["record_n"]
         if not len(base_pattern):
             return (None, None)
 
         results = []
         min_support = 2
         for sec_per_clus in multipliers:
-            pattern = {
-                i * sec_per_clus: base_pattern[i]
-                for i in base_pattern
-            }
+            pattern = {i * sec_per_clus: base_pattern[i] for i in base_pattern}
 
             delta = min(pattern)
             normalized = {
-                i-delta: pattern[i]
-                for i in pattern if i-delta <= width
+                i - delta: pattern[i]
+                for i in pattern
+                if i - delta <= width
                 # Avoid extremely long, useless patterns
             }
             if len(normalized) < min_support:
@@ -590,7 +614,7 @@ class NTFSScanner(DiskScanner):
             )
             if solution is not None:
                 # Avoid negative offsets and ambiguous situations
-                solution[0] = [i-delta for i in solution[0] if i-delta >= 0]
+                solution[0] = [i - delta for i in solution[0] if i - delta >= 0]
                 if len(solution[0]) == 1:
                     positions, amount, perc = solution
                     results.append((positions, perc, sec_per_clus))
@@ -606,27 +630,28 @@ class NTFSScanner(DiskScanner):
         else:
             return (None, None)
 
-    def add_from_indx_allocation(self, parsed: Dict[str, Any], part: NTFSPartition) -> None:
+    def add_from_indx_allocation(
+        self, parsed: Dict[str, Any], part: NTFSPartition
+    ) -> None:
         """Add ghost entries to part from INDEX_ALLOCATION attributes in parsed.
 
         This procedure requires that the beginning of the partition has already
         been discovered."""
         read_again = set()
-        for attr in parsed['attributes']['$INDEX_ALLOCATION']:
+        for attr in parsed["attributes"]["$INDEX_ALLOCATION"]:
             clusters_pos = 0
-            if 'runlist' not in attr:
+            if "runlist" not in attr:
                 continue
-            runlist = attr['runlist']
+            runlist = attr["runlist"]
             for entry in runlist:
-                clusters_pos += entry['offset']
+                clusters_pos += entry["offset"]
                 real_pos = clusters_pos * part.sec_per_clus + part.offset
                 if real_pos in self.parsed_indx:
                     content = self.parsed_indx[real_pos]
                     # Check if the entry matches
-                    if parsed['record_n'] == content['parent']:
+                    if parsed["record_n"] == content["parent"]:
                         discovered = set(
-                            c for c in content['children']
-                            if c not in part.files
+                            c for c in content["children"] if c not in part.files
                         )
                         # If there are new files, read the INDX again
                         if len(discovered):
@@ -635,10 +660,12 @@ class NTFSScanner(DiskScanner):
         img = DiskScanner.get_image(self)
         for position in read_again:
             dump = sectors(img, position, INDX_size)
-            entries = parse_indx_record(dump)['entries']
+            entries = parse_indx_record(dump)["entries"]
             self.add_indx_entries(entries, part)
 
-    def add_from_attribute_list(self, parsed: Dict[str, Any], part: NTFSPartition, offset: int) -> None:
+    def add_from_attribute_list(
+        self, parsed: Dict[str, Any], part: NTFSPartition, offset: int
+    ) -> None:
         """Add additional entries to part from attributes in ATTRIBUTE_LIST.
 
         Files with many attributes may have additional attributes not in the
@@ -649,10 +676,10 @@ class NTFSScanner(DiskScanner):
         image = DiskScanner.get_image(self)
         _integrate_attribute_list(parsed, part, image)
 
-        attrs = parsed['attributes']
-        if '$DATA' in attrs:
-            for attribute in attrs['$DATA']:
-                ads_name = attribute['name']
+        attrs = parsed["attributes"]
+        if "$DATA" in attrs:
+            for attribute in attrs["$DATA"]:
+                ads_name = attribute["name"]
                 if ads_name and len(ads_name):
                     part.add_file(NTFSFile(parsed, offset, ads=ads_name))
 
@@ -669,12 +696,15 @@ class NTFSScanner(DiskScanner):
                 position = mirrpos + i * FILE_size
                 dump = sectors(img, position, FILE_size)
                 parsed = parse_file_record(dump)
-                if parsed['valid'] and '$FILE_NAME' in parsed['attributes']:
+                if parsed["valid"] and "$FILE_NAME" in parsed["attributes"]:
                     node = NTFSFile(parsed, position)
                     part.add_file(node)
                     logging.info(
-                        u'Repaired MFT entry #%s - %s in partition at offset '
-                        '%s from backup', node.index, node.name, part.offset
+                        "Repaired MFT entry #%s - %s in partition at offset "
+                        "%s from backup",
+                        node.index,
+                        node.name,
+                        part.offset,
                     )
 
     def finalize_reconstruction(self, part: NTFSPartition) -> None:
@@ -682,25 +712,26 @@ class NTFSScanner(DiskScanner):
 
         This procedure requires that the beginning of the
         partition has already been discovered."""
-        logging.info('Adding extra attributes from $ATTRIBUTE_LIST')
+        logging.info("Adding extra attributes from $ATTRIBUTE_LIST")
         # Select elements with many attributes
         many_attributes_it = (
-            node for node in list(part.files.values())
-            if node.offset in self.parsed_file_review and
-            '$ATTRIBUTE_LIST' in
-            self.parsed_file_review[node.offset]['attributes']
+            node
+            for node in list(part.files.values())
+            if node.offset in self.parsed_file_review
+            and "$ATTRIBUTE_LIST" in self.parsed_file_review[node.offset]["attributes"]
         )
         for node in many_attributes_it:
             parsed = self.parsed_file_review[node.offset]
             self.add_from_attribute_list(parsed, part, node.offset)
 
-        logging.info('Adding ghost entries from $INDEX_ALLOCATION')
+        logging.info("Adding ghost entries from $INDEX_ALLOCATION")
         # Select only elements with $INDEX_ALLOCATION
         allocation_it = (
-            node for node in list(part.files.values())
-            if node.offset in self.parsed_file_review and
-            '$INDEX_ALLOCATION' in
-            self.parsed_file_review[node.offset]['attributes']
+            node
+            for node in list(part.files.values())
+            if node.offset in self.parsed_file_review
+            and "$INDEX_ALLOCATION"
+            in self.parsed_file_review[node.offset]["attributes"]
         )
         for node in allocation_it:
             parsed = self.parsed_file_review[node.offset]
@@ -711,26 +742,26 @@ class NTFSScanner(DiskScanner):
         partitioned_files: Dict[int, NTFSPartition] = {}
         img = DiskScanner.get_image(self)
 
-        logging.info('Parsing MFT entries')
+        logging.info("Parsing MFT entries")
         for position in self.found_file:
             dump = sectors(img, position, FILE_size)
             parsed = parse_file_record(dump)
-            attrs = parsed.get('attributes', {})
-            if not parsed['valid'] or '$FILE_NAME' not in attrs:
+            attrs = parsed.get("attributes", {})
+            if not parsed["valid"] or "$FILE_NAME" not in attrs:
                 continue
 
             # Partition files based on corresponding entry 0
-            if parsed['record_n'] is not None:
-                offset = position - parsed['record_n'] * FILE_size
+            if parsed["record_n"] is not None:
+                offset = position - parsed["record_n"] * FILE_size
                 try:
                     part = partitioned_files[offset]
                 except KeyError:
                     partitioned_files[offset] = NTFSPartition(self, offset)
                     part = partitioned_files[offset]
-                attributes = parsed['attributes']
-                if '$DATA' in attributes:
-                    for attribute in attributes['$DATA']:
-                        ads_name = attribute['name']
+                attributes = parsed["attributes"]
+                if "$DATA" in attributes:
+                    for attribute in attributes["$DATA"]:
+                        ads_name = attribute["name"]
                         if ads_name:
                             part.add_file(NTFSFile(parsed, position, ads=ads_name))
                 """Add the file again, just in case the $DATA attributes are
@@ -738,54 +769,54 @@ class NTFSScanner(DiskScanner):
                 part.add_file(NTFSFile(parsed, position))
 
                 # Handle information deduced from INDX records
-                if '$INDEX_ROOT' in attrs:
+                if "$INDEX_ROOT" in attrs:
                     self.add_from_indx_root(parsed, part)
                 # Save for later use
-                if '$INDEX_ALLOCATION' in attrs or '$ATTRIBUTE_LIST' in attrs:
+                if "$INDEX_ALLOCATION" in attrs or "$ATTRIBUTE_LIST" in attrs:
                     self.parsed_file_review[position] = parsed
             # TODO [Future] handle files for which there is no record_number
 
         # Parse INDX records
-        logging.info('Parsing INDX records')
+        logging.info("Parsing INDX records")
         for position in self.found_indx:
             dump = sectors(img, position, INDX_size)
             parsed = parse_indx_record(dump)
-            if not parsed['valid']:
+            if not parsed["valid"]:
                 continue
 
-            entries = parsed['entries']
-            referred = (el['file_info']['parent_entry'] for el in entries)
+            entries = parsed["entries"]
+            referred = (el["file_info"]["parent_entry"] for el in entries)
             record_n = Counter(referred).most_common(1)[0][0]
             # Save references for future access
             self.parsed_indx[position] = {
-                'parent': record_n,
-                'children': set(el['record_n'] for el in entries)
+                "parent": record_n,
+                "children": set(el["record_n"] for el in entries),
             }
 
         indx_info = self.parsed_indx
-        self.indx_list = SparseList({
-            pos: indx_info[pos]['parent'] for pos in indx_info
-        })
+        self.indx_list = SparseList(
+            {pos: indx_info[pos]["parent"] for pos in indx_info}
+        )
 
         # Extract boot record information
-        logging.info('Reading boot sectors')
+        logging.info("Reading boot sectors")
         for index in self.found_boot:
             dump = sectors(img, index, 1)
             parsed = unpack(dump, boot_sector_fmt)
-            sec_per_clus = parsed['sectors_per_cluster']
+            sec_per_clus = parsed["sectors_per_cluster"]
             self.found_spc.append(sec_per_clus)
-            relative = parsed['MFT_addr'] * sec_per_clus
-            mirr_relative = parsed['MFTmirr_addr'] * sec_per_clus
+            relative = parsed["MFT_addr"] * sec_per_clus
+            mirr_relative = parsed["MFTmirr_addr"] * sec_per_clus
             part = None
             # Look for matching partition, either as boot sector or backup
-            for delta in (0, parsed['sectors']):
+            for delta in (0, parsed["sectors"]):
                 index = index - delta
                 address = relative + index
                 # Set partition as recoverable
                 if address in partitioned_files:
                     part = partitioned_files[address]
                     part.set_recoverable(True)
-                    part.set_size(parsed['sectors'])
+                    part.set_size(parsed["sectors"])
                     part.offset = index
                     part.sec_per_clus = sec_per_clus
                     part.mftmirr_pos = mirr_relative + index
@@ -799,21 +830,27 @@ class NTFSScanner(DiskScanner):
             part = partitioned_files[address]
             mirrpos = part.mftmirr_pos
             if mirrpos is None:
-                entry = part.get(1)     # $MFTMirr
+                entry = part.get(1)  # $MFTMirr
                 if entry is None:
                     continue
                 else:
                     # Infer MFT mirror position
                     dump = sectors(img, entry.offset, FILE_size)
                     mirror = parse_file_record(dump)
-                    if (mirror['valid'] and 'attributes' in mirror and
-                            '$DATA' in mirror['attributes']):
-                        datas = mirror['attributes']['$DATA']
-                        if (len(datas) == 1 and datas[0]['non_resident'] and
-                                'runlist' in datas[0] and
-                                len(datas[0]['runlist']) > 0 and
-                                'offset' in datas[0]['runlist'][0]):
-                            relative = datas[0]['runlist'][0]['offset']
+                    if (
+                        mirror["valid"]
+                        and "attributes" in mirror
+                        and "$DATA" in mirror["attributes"]
+                    ):
+                        datas = mirror["attributes"]["$DATA"]
+                        if (
+                            len(datas) == 1
+                            and datas[0]["non_resident"]
+                            and "runlist" in datas[0]
+                            and len(datas[0]["runlist"]) > 0
+                            and "offset" in datas[0]["runlist"][0]
+                        ):
+                            relative = datas[0]["runlist"][0]["offset"]
                             spc = part.sec_per_clus
                             if spc is None:
                                 continue
@@ -828,23 +865,22 @@ class NTFSScanner(DiskScanner):
                 # Check if it looks like a MFT mirror
                 if len(bogus.files) == 4 and max(bogus.files) < 4:
                     logging.debug(
-                        'Dropping bogus NTFS partition with MFT '
-                        'position %d generated by MFT mirror of '
-                        'partition at offset %d',
-                        bogus.mft_pos, part.offset
+                        "Dropping bogus NTFS partition with MFT "
+                        "position %d generated by MFT mirror of "
+                        "partition at offset %d",
+                        bogus.mft_pos,
+                        part.offset,
                     )
                     partitioned_files.pop(mirrpos)
 
         # Acquire additional information from $INDEX_ALLOCATION
-        logging.info('Finding partition geometry')
+        logging.info("Finding partition geometry")
         most_likely = self.most_likely_sec_per_clus()
         for address in partitioned_files:
             part = partitioned_files[address]
             if part.offset is None:
                 # Find geometry by approximate string matching
-                offset, sec_per_clus = self.find_boundary(
-                    part, address, most_likely
-                )
+                offset, sec_per_clus = self.find_boundary(part, address, most_likely)
                 if offset is not None:
                     part.set_recoverable(True)
                     part.offset = offset
@@ -853,8 +889,7 @@ class NTFSScanner(DiskScanner):
                 offset, sec_per_clus = part.offset, part.sec_per_clus
             if offset is not None:
                 logging.info(
-                    'Finalizing MFT reconstruction of partition at offset %i',
-                    offset
+                    "Finalizing MFT reconstruction of partition at offset %i", offset
                 )
                 self.finalize_reconstruction(part)
 
@@ -864,48 +899,53 @@ class NTFSScanner(DiskScanner):
             if address not in partitioned_files:
                 continue
             part = partitioned_files[address]
-            entry = part.get(0)     # $MFT
+            entry = part.get(0)  # $MFT
             if entry is None or part.sec_per_clus is None:
                 continue
             dump = sectors(img, entry.offset, FILE_size)
             parsed = parse_file_record(dump)
-            if not parsed['valid'] or 'attributes' not in parsed:
+            if not parsed["valid"] or "attributes" not in parsed:
                 continue
 
-            if '$ATTRIBUTE_LIST' in parsed['attributes']:
+            if "$ATTRIBUTE_LIST" in parsed["attributes"]:
                 _integrate_attribute_list(parsed, part, img)
-            attrs = parsed['attributes']
-            if '$DATA' not in attrs or len(attrs['$DATA']) < 1:
+            attrs = parsed["attributes"]
+            if "$DATA" not in attrs or len(attrs["$DATA"]) < 1:
                 continue
 
-            if 'runlist' not in attrs['$DATA'][0]:
+            if "runlist" not in attrs["$DATA"][0]:
                 continue
-            runlist = attrs['$DATA'][0]['runlist']
+            runlist = attrs["$DATA"][0]["runlist"]
             if len(runlist) > 1:
                 logging.info(
-                    'MFT for partition at offset %d is fragmented. Trying to '
-                    'merge %d parts...', part.offset, len(runlist)
+                    "MFT for partition at offset %d is fragmented. Trying to "
+                    "merge %d parts...",
+                    part.offset,
+                    len(runlist),
                 )
-                clusters_pos = runlist[0]['offset']
+                clusters_pos = runlist[0]["offset"]
                 spc = part.sec_per_clus
-                size = runlist[0]['length']
+                size = runlist[0]["length"]
                 for entry in runlist[1:]:
-                    clusters_pos += entry['offset']
+                    clusters_pos += entry["offset"]
                     real_pos = clusters_pos * part.sec_per_clus + part.offset
-                    position = real_pos - size*spc
+                    position = real_pos - size * spc
                     if position in partitioned_files:
                         piece = partitioned_files[position]
                         if piece.offset is None or piece.offset == part.offset:
                             conflicts = [
-                                i for i in piece.files if
-                                not piece.files[i].is_ghost and
-                                i in part.files and
-                                not part.files[i].is_ghost
+                                i
+                                for i in piece.files
+                                if not piece.files[i].is_ghost
+                                and i in part.files
+                                and not part.files[i].is_ghost
                             ]
                             if not len(conflicts):
                                 logging.debug(
-                                    'Merging partition with MFT offset %d into'
-                                    ' %s (fragmented MFT)', piece.mft_pos, part
+                                    "Merging partition with MFT offset %d into"
+                                    " %s (fragmented MFT)",
+                                    piece.mft_pos,
+                                    part,
                                 )
                                 # Merge the partitions
                                 merge(part, piece)
@@ -913,9 +953,11 @@ class NTFSScanner(DiskScanner):
                                 partitioned_files.pop(position)
                             else:
                                 logging.debug(
-                                    'NOT merging partition with MFT offset %d into'
-                                    ' %s (possible fragmented MFT) due to conflicts', piece.mft_pos, part
+                                    "NOT merging partition with MFT offset %d into"
+                                    " %s (possible fragmented MFT) due to conflicts",
+                                    piece.mft_pos,
+                                    part,
                                 )
-                    size += entry['length']
+                    size += entry["length"]
 
         return partitioned_files
