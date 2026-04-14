@@ -4,5 +4,5 @@ requires-python = ">=3.9"
 
 [[package]]
 name = "recuperabit"
-version = "1.1.6"
+version = "1.1.6.post1"
 source = { editable = "." }

@@ -1,6 +1,6 @@
 [project]
 name = "RecuperaBit"
-version = "1.1.6"
+version = "1.1.6.post1"
 description = "Reconstruct file system structures and recover files from damaged NTFS volumes."
 readme = "README.md"
 authors = [
@@ -9,6 +9,29 @@ authors = [
 license = "GPL-3.0-or-later"
 requires-python = ">=3.9"
 dependencies = []
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: System :: Filesystems",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/Lazza/RecuperaBit"
+Repository = "https://github.com/Lazza/RecuperaBit"
+Issues = "https://github.com/Lazza/RecuperaBit/issues"
 
 [project.scripts]
 recuperabit = "recuperabit.cli:main"
