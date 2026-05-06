@@ -222,6 +222,22 @@ def makedirs(path: str) -> bool:
     return True
 
 
+def contained_path(base: str, *paths: str) -> Optional[str]:
+    """Join paths while ensuring the result stays under base."""
+    base_path = os.path.realpath(base)
+    target_path = os.path.realpath(os.path.join(base_path, *paths))
+
+    try:
+        common_path = os.path.commonpath([base_path, target_path])
+    except ValueError:
+        return None
+
+    if common_path != base_path:
+        return None
+
+    return target_path
+
+
 def recursive_restore(
     node: "File", part: "Partition", outputdir: str, make_dirs: bool = True
 ) -> None:
@@ -231,8 +247,12 @@ def recursive_restore(
     )
 
     file_path = os.path.join(parent_path, node.name)
-    restore_parent_path = os.path.join(outputdir, parent_path)
-    restore_path = os.path.join(outputdir, file_path)
+    restore_parent_path = contained_path(outputdir, parent_path)
+    restore_path = contained_path(outputdir, file_path)
+
+    if restore_parent_path is None or restore_path is None:
+        logging.error("Refusing to restore unsafe path %s", file_path)
+        return
 
     try:
         content = node.get_content(part)
