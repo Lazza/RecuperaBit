@@ -222,6 +222,13 @@ def makedirs(path: str) -> bool:
     return True
 
 
+def _is_within_directory(directory: str, target: str) -> bool:
+    """Return True if the real path of target is confined within directory."""
+    real_directory = os.path.realpath(directory)
+    real_target = os.path.realpath(target)
+    return os.path.commonpath([real_directory, real_target]) == real_directory
+
+
 def recursive_restore(
     node: "File", part: "Partition", outputdir: str, make_dirs: bool = True
 ) -> None:
@@ -233,6 +240,16 @@ def recursive_restore(
     file_path = os.path.join(parent_path, node.name)
     restore_parent_path = os.path.join(outputdir, parent_path)
     restore_path = os.path.join(outputdir, file_path)
+
+    if not _is_within_directory(outputdir, restore_path) or not _is_within_directory(
+        outputdir, restore_parent_path
+    ):
+        logging.error(
+            "Refusing to restore #%s %s outside of the output directory",
+            node.index,
+            file_path,
+        )
+        return
 
     try:
         content = node.get_content(part)
