@@ -22,9 +22,9 @@
 import argparse
 import codecs
 import itertools
+import json
 import logging
 import os.path
-import pickle
 import sys
 from typing import TYPE_CHECKING
 
@@ -326,7 +326,7 @@ def main():
         else:
             logging.info("Checking if results already exist.")
             try:
-                savefile = open(args.savefile, "rb")
+                savefile = open(args.savefile, "r")
                 logging.info("Results will be read from %s", args.savefile)
                 read_results = True
             except IOError:
@@ -337,9 +337,13 @@ def main():
     if read_results:
         logging.info("The save file exists. Trying to read it...")
         try:
-            indexes = pickle.load(savefile)
+            indexes = json.load(savefile)
             savefile.close()
-        except IndexError:
+            if not isinstance(indexes, list) or not all(
+                isinstance(i, int) for i in indexes
+            ):
+                raise ValueError("save file must contain a list of integers")
+        except (ValueError, json.JSONDecodeError):
             logging.error("Malformed save file!")
             exit(1)
     else:
@@ -370,8 +374,8 @@ def main():
 
     if write_results:
         logging.info("Saving results to %s", args.savefile)
-        with open(args.savefile, "wb") as savefile:
-            pickle.dump(interesting, savefile)
+        with open(args.savefile, "w") as savefile:
+            json.dump(interesting, savefile)
 
     # Ask for partitions
     parts: dict[int, "Partition"] = {}
