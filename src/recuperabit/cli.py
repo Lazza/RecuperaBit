@@ -376,7 +376,10 @@ def main():
     # Ask for partitions
     parts: dict[int, "Partition"] = {}
     for scanner in scanners:
-        parts.update(scanner.get_partitions())
+        try:
+            parts.update(scanner.get_partitions())
+        except Exception as exc:  # pylint: disable=W0703
+            logging.error("Partition scan failed for %s: %s", scanner, exc)
 
     shorthands = list(enumerate(parts))
 
@@ -390,7 +393,10 @@ def main():
             exit(0)
         cmd = command[0]
         arguments = command[1:]
-        interpret(cmd, arguments, parts, shorthands, args.outputdir)
+        try:
+            interpret(cmd, arguments, parts, shorthands, args.outputdir)
+        except Exception as exc:  # pylint: disable=W0703
+            logging.error("Command '%s' failed: %s", cmd, exc)
 
 
 if __name__ == "__main__":
