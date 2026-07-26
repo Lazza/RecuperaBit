@@ -224,6 +224,12 @@ def tree_folder(directory: "File", padding: int = 0) -> str:
     return "\n".join(lines)
 
 
+def _bodyfile_escape(name: str) -> str:
+    """Escape backslash and the '|' field separator so a reconstructed name
+    cannot inject extra columns into the pipe-delimited body file."""
+    return name.replace("\\", "\\\\").replace("|", "\\|")
+
+
 def _bodyfile_repr(node: "File", path: str) -> str:
     """Return a body file line for node."""
     end = "/" if node.is_directory or len(node.children) else ""
@@ -231,7 +237,7 @@ def _bodyfile_repr(node: "File", path: str) -> str:
         str(el)
         for el in [
             "0",  # MD5
-            path + node.name + end,  # name
+            _bodyfile_escape(path + node.name + end),  # name
             node.index,  # inode
             "0",
             "0",
@@ -261,10 +267,28 @@ def bodyfile_folder(directory: "File", path: str = "") -> List[str]:
     return lines
 
 
+_LATEX_SPECIAL_CHARS = (
+    # Backslash first, so the backslashes introduced by the other
+    # substitutions below are not themselves re-escaped.
+    ("\\", r"\textbackslash{}"),
+    ("{", r"\{"),
+    ("}", r"\}"),
+    ("$", r"\$"),
+    ("&", r"\&"),
+    ("#", r"\#"),
+    ("_", r"\_"),
+    ("%", r"\%"),
+    ("~", r"\textasciitilde{}"),
+    ("^", r"\textasciicircum{}"),
+)
+
+
 def _ltx_clean(label: Any) -> str:
     """Small filter to prepare strings to be included in LaTeX code."""
-    clean = str(label).replace("$", r"\$").replace("_", r"\_")
-    if clean[0] == "-":
+    clean = str(label)
+    for char, escaped in _LATEX_SPECIAL_CHARS:
+        clean = clean.replace(char, escaped)
+    if clean and clean[0] == "-":
         clean = r"\textminus{}" + clean[1:]
     return clean
 
@@ -317,6 +341,20 @@ def tikz_part(part: "Partition") -> str:
     return "%s\n\n%s\n%s\n%s" % (preamble, begin_tree, "\n".join(lines), end_tree)
 
 
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_field(value: Any) -> str:
+    """Quote a CSV field, escaping embedded double quotes (RFC 4180) and
+    neutralising spreadsheet formula injection (CSV/formula injection) by
+    prefixing a leading apostrophe when the value starts with a character
+    that Excel/LibreOffice would interpret as the start of a formula."""
+    text = str(value)
+    if text.startswith(_CSV_FORMULA_PREFIXES):
+        text = "'" + text
+    return '"' + text.replace('"', '""') + '"'
+
+
 def csv_part(part: "Partition") -> list[str]:
     """Provide a CSV representation for a partition."""
     contents = [
@@ -342,12 +380,12 @@ def csv_part(part: "Partition") -> list[str]:
     for index in part.files:
         obj = part.files[index]
         contents.append(
-            '%s,%s,"%s","%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s'
+            "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
             % (
                 obj.index,
                 obj.parent,
-                obj.name,
-                obj.full_path(part),
+                _csv_field(obj.name),
+                _csv_field(obj.full_path(part)),
                 obj.mac["modification"],
                 obj.mac["access"],
                 obj.mac["creation"],
